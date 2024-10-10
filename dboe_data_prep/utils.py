@@ -2,10 +2,19 @@ import requests
 import os
 import json
 import glob
-from time import localtime, strptime, mktime, strftime
+from time import localtime, strptime, mktime, strftime, sleep
 
 
 _CURRENT_TIME = strftime("%Y-%m-%d_%H-%M-%S", localtime())
+
+
+def sleeping(time: float) -> None:
+    """_summary_
+
+    Args:
+        time (float): _description_
+    """
+    sleep(time)
 
 
 def get_response(url: str, headers: dict,
@@ -55,7 +64,8 @@ def save_response(response: requests.Response, title: str, file: str) -> None:
         f.write(response.content)
 
 
-def save_dict_to_json(data: dict, title: str, file: str) -> None:
+def save_dict_to_json(data: dict, title: str = False,
+                      file: str = False) -> None:
     """_summary_
 
     Args:
@@ -63,10 +73,12 @@ def save_dict_to_json(data: dict, title: str, file: str) -> None:
         title (str): _description_
         file (str): _description_
     """
-    output_dir = title + "__" + _CURRENT_TIME
-    os.makedirs(output_dir, exist_ok=True)
-    with open(os.path.join(output_dir, file), 'w') as f:
-        json.dump(data, f)
+    if file:
+        output_dir = title + "__" + _CURRENT_TIME
+        os.makedirs(output_dir, exist_ok=True)
+        with open(os.path.join(output_dir, file), 'w') as f:
+            json.dump(data, f, ensure_ascii=False)
+    return json.dumps(data, ensure_ascii=False)
 
 
 def create_add_log(log: str, title: str, file: str) -> None:
@@ -120,7 +132,7 @@ def is_file_outdated(date: str, tf: int) -> bool:
     """
     time_tuple = mktime(strptime(date, "%Y-%m-%d_%H-%M-%S"))
     local_time_tuple = mktime(localtime())
-    timeframe = (tf * 24) * 60
+    timeframe = ((tf * 24) * 60) * 60
     file_age = time_tuple + timeframe
     if file_age > local_time_tuple:
         return False

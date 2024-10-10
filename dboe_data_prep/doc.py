@@ -1,8 +1,6 @@
-import json
 from requests import Response
-from time import sleep
 from utils import (get_response, post_response, save_response, create_add_log,
-                   save_dict_to_json)
+                   save_dict_to_json, sleeping)
 from config import _SLEEP_TIME_API, _SLEEP_TIME_DICT
 
 
@@ -50,12 +48,12 @@ def get_documents(documents: list, title: str, save: bool = False) -> dict:
                 create_add_log(f"Error: {document.status_code}",
                                title, 'documents.txt')
                 continue
-            document_json: json = document.json()
+            document_json = document.json()
             document_es_id: str = document_json["es_id"]
             document_tags: list = document_json["tag"]
             es_ids[document_es_id] = document_tags
-            sleep(_SLEEP_TIME_API)
-        sleep(_SLEEP_TIME_DICT)
+            sleeping(_SLEEP_TIME_API)
+        sleeping(_SLEEP_TIME_DICT)
     if save:
         save_dict_to_json(es_ids, title, 'documents.json')
         create_add_log(f"Saved file: documents.json to {title}",
@@ -82,7 +80,7 @@ def get_document_data(documents: dict,
     response = post_response(url,
                              headers={'Content-Type':
                                       'application/json'},
-                             data=json.dumps({"ids": keys})
+                             data=save_dict_to_json({"ids": keys})
                              )
     if response.status_code != 200:
         create_add_log(f"Error: {response.status_code}",
@@ -131,11 +129,11 @@ def tags_to_documents(documents: dict, title: str,
                 create_add_log(f"KeyError: Tag {tag_id} not found",
                                title, 'documents_and_tags.txt')
                 continue
-            sleep(_SLEEP_TIME_DICT)
+            sleeping(_SLEEP_TIME_DICT)
         documents[key] = tag_labels
         create_add_log(f"Tags for document {key}: {tag_labels}",
                        title, 'documents_and_tags.txt')
-        sleep(_SLEEP_TIME_DICT)
+        sleeping(_SLEEP_TIME_DICT)
     if save:
         save_dict_to_json(documents, title, 'documents_and_tags.json')
         create_add_log(f"File saved: documents_and_tags.json in {title}",

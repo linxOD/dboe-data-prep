@@ -3,10 +3,13 @@ from utils import (load_json, load_env_var,
 from col import get_collection, get_collection_detail
 from tag import get_all_tags, sort_tags
 from doc import get_documents, get_document_data, tags_to_documents
-from config import _API_VAR_MD, _API_VAR_DATA, _TITLE_VAR
+from text import collection_data_to_simplified_dict
+from config import _API_VAR_MD, _API_VAR_DATA, _TITLE_VAR, _EXPIRY_TIME
 
 
-def download_collection(sorted_tags: dict, col_title: str, url: str):
+def download_collection(sorted_tags: dict,
+                        col_title: str,
+                        url: str) -> tuple[dict, dict]:
     """_summary_
 
     Args:
@@ -50,7 +53,7 @@ if __name__ == "__main__":
     col_title = load_env_var(_TITLE_VAR)
     try:
         tag_date, tag_glob = get_date_from_dir("tags", "tags")
-        is_outdated = is_file_outdated(tag_date, 14)
+        is_outdated = is_file_outdated(tag_date, _EXPIRY_TIME)
     except IndexError:
         is_outdated = True
     if is_outdated:
@@ -62,7 +65,7 @@ if __name__ == "__main__":
     try:
         doc_date, doc_glob = get_date_from_dir(col_title, "documents_and_tags")
         data_date, data_glob = get_date_from_dir(col_title, "data_response")
-        is_outdated = is_file_outdated(doc_date, 30)
+        is_outdated = is_file_outdated(doc_date, _EXPIRY_TIME)
     except IndexError:
         is_outdated = True
     if is_outdated:
@@ -73,4 +76,6 @@ if __name__ == "__main__":
         doc_tags = load_json(doc_glob)
         print(f"Using existing document file: {data_glob}")
         doc_data = load_json(data_glob)
+    simplified_data = collection_data_to_simplified_dict(doc_data, doc_tags,
+                                                         col_title, save=True)
     print("ended")

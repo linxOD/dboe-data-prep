@@ -1,7 +1,6 @@
-from time import sleep
 from requests import Response
 from utils import (get_response, save_response, create_add_log,
-                   save_dict_to_json)
+                   save_dict_to_json, sleeping)
 from config import _SLEEP_TIME_API, _SLEEP_TIME_DICT
 
 
@@ -56,7 +55,7 @@ def sort_tags(tags: Response, title: str,
         try:
             item = results.pop()
         except IndexError:
-            create_add_log(f"All tags sorted: {len(result_len)}",
+            create_add_log(f"All tags sorted: {result_len}",
                            title, 'tags.txt')
             next = False
             continue
@@ -67,11 +66,11 @@ def sort_tags(tags: Response, title: str,
             "color": item["color"]
         }
         tagDict[str(item["id"])] = tag_details
-        sleep(_SLEEP_TIME_DICT)
+        sleeping(_SLEEP_TIME_DICT)
     if next_doc:
         create_add_log(f"Next page: {next_doc}",
                        title, 'tags.txt')
-        sleep(_SLEEP_TIME_API)
+        sleeping(_SLEEP_TIME_API)
         tags = get_response(next_doc,
                             headers={'Accept': 'application/json'}
                             )
