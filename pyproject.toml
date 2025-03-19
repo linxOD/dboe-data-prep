@@ -1,0 +1,12 @@
+[project]
+name = "dboe-data-prep"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "pandas>=2.2.3",
+    "pydantic>=2.10.2",
+    "requests>=2.32.3",
+    "tqdm>=4.67.1",
+]

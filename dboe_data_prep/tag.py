@@ -1,10 +1,13 @@
 from requests import Response
 from utils import (get_response, save_response, create_add_log,
                    save_dict_to_json, sleeping)
-from config import _SLEEP_TIME_API, _SLEEP_TIME_DICT
+from config import _SLEEP_TIME_API, _SLEEP_TIME_DICT, _OUTPUT_PATH
 
 
-def get_all_tags(title: str, save: bool = False) -> dict:
+OUTPUT_PATH = _OUTPUT_PATH
+
+
+def get_all_tags(title: str, save: bool = False) -> dict | None:
     """_summary_
 
     Args:
@@ -18,12 +21,13 @@ def get_all_tags(title: str, save: bool = False) -> dict:
                         headers={'Accept': 'application/json'},
                         params={"page_size": 1000})
     if tags.status_code != 200:
-        create_add_log(f"Error: {tags.status_code}",
+        create_add_log(OUTPUT_PATH, f"Error: {tags.status_code}",
                        title, 'tags_response.txt')
         return None
     if save:
-        save_response(tags, "tags", 'tags_response.json')
-        create_add_log(f"Saved file: tags_response.json to {title}",
+        save_response(OUTPUT_PATH, tags, "tags__all", 'tags_response.json')
+        create_add_log(OUTPUT_PATH,
+                       f"Saved file: tags_response.json to {title}",
                        title, 'tags_response.txt')
     return tags
 
@@ -55,7 +59,8 @@ def sort_tags(tags: Response, title: str,
         try:
             item = results.pop()
         except IndexError:
-            create_add_log(f"All tags sorted: {result_len}",
+            create_add_log(OUTPUT_PATH,
+                           f"All tags sorted: {result_len}",
                            title, 'tags.txt')
             next = False
             continue
@@ -68,19 +73,19 @@ def sort_tags(tags: Response, title: str,
         tagDict[str(item["id"])] = tag_details
         sleeping(_SLEEP_TIME_DICT)
     if next_doc:
-        create_add_log(f"Next page: {next_doc}",
+        create_add_log(OUTPUT_PATH, f"Next page: {next_doc}",
                        title, 'tags.txt')
         sleeping(_SLEEP_TIME_API)
         tags = get_response(next_doc,
                             headers={'Accept': 'application/json'}
                             )
         if tags is None:
-            create_add_log("Error: No tags found",
+            create_add_log(OUTPUT_PATH, "Error: No tags found",
                            title, 'tags.txt')
         else:
             sort_tags(tags, title, tagDict, save)
     if save:
-        save_dict_to_json(tagDict, "tags", 'tags.json')
-        create_add_log(f"Saved file: tags.json to {title}",
+        save_dict_to_json(OUTPUT_PATH, tagDict, "tags", 'tags.json')
+        create_add_log(OUTPUT_PATH, f"Saved file: tags.json to {title}",
                        title, 'tags.txt')
     return tagDict

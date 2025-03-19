@@ -3,9 +3,25 @@ import os
 import json
 import glob
 from time import localtime, strptime, mktime, strftime, sleep
+import pandas as pd
+from tqdm import tqdm
 
 
 _CURRENT_TIME = strftime("%Y-%m-%d_%H-%M-%S", localtime())
+
+
+def parse_csv(file_path):
+    file = pd.read_csv(file_path, sep=';', encoding='utf-8')
+    test_collections = []
+    for index, row in tqdm(file.iterrows(), total=file.shape[0]):
+        article = row['Artikel']
+        col_verbr = row['verbr-Collection-ID']
+        hauptlemma = row['HL in DB']
+        test_collections.append({
+            'article': article,
+            'col_verbr': col_verbr,
+            'hauptlemma': hauptlemma})
+    return test_collections
 
 
 def sleeping(time: float) -> None:
@@ -50,7 +66,8 @@ def post_response(url: str, headers: dict, params: dict = None,
     return response
 
 
-def save_response(response: requests.Response, title: str, file: str) -> None:
+def save_response(output_path: str, response: requests.Response,
+                  title: str, file: str) -> None:
     """_summary_
 
     Args:
@@ -58,14 +75,15 @@ def save_response(response: requests.Response, title: str, file: str) -> None:
         title (str): _description_
         file (str): _description_
     """
-    output_dir = title + "__" + _CURRENT_TIME
+    os.makedirs(output_path, exist_ok=True)
+    output_dir = os.path.join(output_path, title + "__" + _CURRENT_TIME)
     os.makedirs(output_dir, exist_ok=True)
     with open(os.path.join(output_dir, file), 'wb') as f:
         f.write(response.content)
 
 
-def save_dict_to_json(data: dict, title: str = False,
-                      file: str = False) -> None:
+def save_dict_to_json(output_path: str = None, data: dict = None,
+                      title: str = False, file: str = False) -> None:
     """_summary_
 
     Args:
@@ -74,21 +92,23 @@ def save_dict_to_json(data: dict, title: str = False,
         file (str): _description_
     """
     if file:
-        output_dir = title + "__" + _CURRENT_TIME
+        os.makedirs(output_path, exist_ok=True)
+        output_dir = os.path.join(output_path, title + "__" + _CURRENT_TIME)
         os.makedirs(output_dir, exist_ok=True)
         with open(os.path.join(output_dir, file), 'w') as f:
             json.dump(data, f, ensure_ascii=False)
     return json.dumps(data, ensure_ascii=False)
 
 
-def create_add_log(log: str, title: str, file: str) -> None:
+def create_add_log(output_path: str, log: str, title: str, file: str) -> None:
     """_summary_
 
     Args:
         log (_type_): _description_
         path (_type_): _description_
     """
-    output_dir = title + "__" + _CURRENT_TIME
+    os.makedirs(output_path, exist_ok=True)
+    output_dir = os.path.join(output_path, title + "__" + _CURRENT_TIME)
     os.makedirs(os.path.join(output_dir, "logs"), exist_ok=True)
     with open(os.path.join(output_dir, "logs", file), 'a') as f:
         f.write(log + '\n')
@@ -103,7 +123,8 @@ def load_json(file: str) -> dict:
     Returns:
         dict: _description_
     """
-    with open(file, 'r') as f:
+    input_dir = os.path.join(file)
+    with open(input_dir, 'r') as f:
         data = json.load(f)
     return data
 
@@ -140,7 +161,7 @@ def is_file_outdated(date: str, tf: int) -> bool:
         return True
 
 
-def get_date_from_dir(dir: str, file: str) -> tuple:
+def get_date_from_dir(input_path: str, dir: str, file: str) -> tuple:
     """_summary_
 
     Args:
@@ -150,6 +171,7 @@ def get_date_from_dir(dir: str, file: str) -> tuple:
     Returns:
         tuple: _description_
     """
-    glob_str = glob.glob(f"{dir}__*/{file}.json")[0]
-    date_str = glob_str.split('/')[-2].split("__")[1]
+    glob_str = glob.glob(os.path.join(input_path,
+                                      f"{dir}__*", f"{file}.json"))[0]
+    date_str = glob_str.split('/')[-2].split("__")[2]
     return date_str, glob_str

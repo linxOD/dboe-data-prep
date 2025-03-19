@@ -1,10 +1,13 @@
 ####################################################################
+# configure the output directory path as str
+_OUTPUT_PATH = "output"
+####################################################################
 # configure sleep time as int for api requests and dict while loop
-_SLEEP_TIME_API = 1
+_SLEEP_TIME_API = 0.1
 _SLEEP_TIME_DICT = 0.01
 ####################################################################
 # configure expiry time for files in days as int
-_EXPIRY_TIME = 14
+_EXPIRY_TIME = 60
 ####################################################################
 # save urls and collection titles under the following variable names
 # as enviroment varialbes

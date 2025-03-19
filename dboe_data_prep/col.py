@@ -1,10 +1,14 @@
 from requests import Response
 from utils import (get_response, save_response, create_add_log,
                    save_dict_to_json, sleeping)
-from config import _SLEEP_TIME_API
+from config import _SLEEP_TIME_API, _OUTPUT_PATH
 
 
-def get_collection(url: str,
+OUTPUT_PATH = _OUTPUT_PATH
+
+
+def get_collection(url: str = None,
+                   col_id: str = None,
                    title: str = None,
                    save: bool = False) -> Response:
     """_summary_
@@ -21,20 +25,47 @@ def get_collection(url: str,
         params = None
     else:
         params = {'title': title}
+    if col_id is not None:
+        params = None
+        # check if url ends with '/'
+        if url[-1] == '/':
+            url = url + col_id
+        else:
+            url = url + '/' + col_id
+        print(url)
     collection = get_response(url,
                               headers={'Accept': 'application/json'},
-                              params=params
-                              )
+                              params=params)
     if collection.status_code != 200:
-        create_add_log(f"Error: {collection.status_code}", title,
-                       'collection.txt')
+        title_id = col_id + "__error"
+        create_add_log(OUTPUT_PATH, f"Error: {collection.status_code}",
+                       title_id, 'collection.txt')
         print("Error log created.")
-        return None
+        return None, None
+    collection_json = collection.json()
+    try:
+        detail = collection_json["detail"]
+        if detail == "Not found.":
+            title_id = col_id + "__not_found"
+            create_add_log(OUTPUT_PATH, f"Error: {collection.status_code}",
+                           title_id, 'collection.txt')
+            return None, None
+    except KeyError:
+        pass
+    if col_id is not None:
+        try:
+            title = collection_json["title"]
+        except KeyError:
+            title = "unknown"
+        title_id = f"{col_id}__{title}"
+    else:
+        title_id = title
     if save:
-        save_response(collection, title, 'collection.json')
-        create_add_log(f"Saved file: collection.json to {title}",
-                       title, 'collection.txt')
-    return collection
+        save_response(OUTPUT_PATH, collection, title_id, 'collection.json')
+        create_add_log(OUTPUT_PATH,
+                       "Saved file: collection.json to {title_id}",
+                       title_id, 'collection.txt')
+    return title_id, collection
 
 
 def get_collection_detail(collection: Response,
@@ -70,40 +101,44 @@ def get_collection_detail(collection: Response,
             url = item["url"]
             item_title = item["title"]
         except KeyError:
-            create_add_log("KeyError: No 'title' or 'url' found", title,
-                           'collection_detail.txt')
+            create_add_log(OUTPUT_PATH, "KeyError: No 'title' or 'url' found",
+                           title, 'collection_detail.txt')
             continue
-        create_add_log(f"Download Collection: {item_title}", title,
-                       'collection_detail.txt')
-        create_add_log(url, title, 'collection_detail.txt')
+        create_add_log(OUTPUT_PATH, f"Download Collection: {item_title}",
+                       title, 'collection_detail.txt')
+        create_add_log(OUTPUT_PATH, url, title, 'collection_detail.txt')
         collection_detail = get_response(url,
                                          headers={'Accept':
                                                   'application/json'}
                                          )
         if collection_detail.status_code != 200:
-            create_add_log(f"Error: {collection_detail.status_code}", title,
-                           'collection_detail.txt')
+            create_add_log(OUTPUT_PATH,
+                           f"Error: {collection_detail.status_code}",
+                           title, 'collection_detail.txt')
             continue
         collection_detail_json = collection_detail.json()
         collections_title: str = collection_detail_json["title"]
         document_urls: list = collection_detail_json["es_document"]
-        create_add_log(f"Number of documents found: {len(document_urls)}",
+        create_add_log(OUTPUT_PATH,
+                       f"Number of documents found: {len(document_urls)}",
                        title, 'collection_detail.txt')
         new_dict = dict()
         new_dict[collections_title] = document_urls
         all_collections.append(new_dict)
         sleeping(_SLEEP_TIME_API)
     if collection_next:
-        create_add_log(f"Next page: {collection_next}",
+        create_add_log(OUTPUT_PATH, f"Next page: {collection_next}",
                        title, 'collection_detail.txt')
         collection = get_collection(collection_next, title)
         if collection is None:
-            create_add_log("Error: No collection", title,
+            create_add_log(OUTPUT_PATH, "Error: No collection", title,
                            'collection_detail.txt')
         else:
             get_collection_detail(collection, title, all_collections, save)
     if save:
-        create_add_log(f"Saved file: collection_detail.json to {title}",
+        create_add_log(OUTPUT_PATH,
+                       f"Saved file: collection_detail.json to {title}",
                        title, 'collection_detail.txt')
-        save_dict_to_json(all_collections, title, 'collection_detail.json')
+        save_dict_to_json(OUTPUT_PATH, all_collections, title,
+                          'collection_detail.json')
     return all_collections
