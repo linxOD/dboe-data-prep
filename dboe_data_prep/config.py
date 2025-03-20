@@ -1,6 +1,13 @@
 ####################################################################
 # configure the output directory path as str
 _OUTPUT_PATH = "output"
+# configure the path to the articles as str
+_ARTICLES_PATH = "home/daniel/Projects/Gitlab/wboe-artikel/102_derived_tei/Artikel_Redaktionstool"
+# configure XML Namespace as dict
+_NSMAP = {
+    "tei": "http://www.tei-c.org/ns/1.0",
+    "xml": "http://www.w3.org/XML/1998/namespace"
+}
 ####################################################################
 # configure sleep time as int for api requests and dict while loop
 _SLEEP_TIME_API = 0.1

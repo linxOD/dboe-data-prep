@@ -1,10 +1,10 @@
 import os
+import json
 from pydantic import BaseModel
 from tqdm import tqdm
 
 from utils import (load_json, load_env_var, parse_csv,
-                   get_date_from_dir, is_file_outdated,
-                   save_dict_to_json)
+                   get_date_from_dir, is_file_outdated)
 from col import get_collection, get_collection_detail
 from tag import get_all_tags, sort_tags
 from doc import (get_documents, get_documents_id, get_document_data,
@@ -81,6 +81,7 @@ if __name__ == "__main__":
     for article in tqdm(articles, total=len(articles)):
         # dd = DBOEData(title=col_title, url=url)
         col_id = f"{article["col_verbr"]}"
+        article_name = article["article"]
         dd = DBOEData(url=url, col_id=col_id)
         try:
             tag_date, tag_glob = get_date_from_dir(INPUT_PATH, "tags", "tags")
@@ -113,12 +114,15 @@ if __name__ == "__main__":
                                                                  title,
                                                                  save=True)
         else:
-            print(f"Using existing simplified file: {data_glob}")
+            print(f"Using existing simplified file: {data_simplified_glob}")
             if "error" in data_simplified_glob or\
                     "not_found" in data_simplified_glob or\
                     "unknown" in data_simplified_glob:
                 continue
             simplified_data = load_json(data_simplified_glob)
-            corpus = create_collection_corpus(simplified_data, corpus)
-        save_dict_to_json(INPUT_PATH, corpus, "corpus", "llm_corpus.json")
-        print("ended")
+            corpus = create_collection_corpus(simplified_data, article_name)
+            corpus_path = data_simplified_glob.split("/")
+            corpus_path = os.path.join("./output", corpus_path[1])
+            with open(os.path.join(corpus_path, "llm_corpus.json"), 'w') as f:
+                json.dump(corpus, f, ensure_ascii=False)
+    print("ended")

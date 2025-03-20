@@ -1,3 +1,22 @@
+import os
+from lxml import etree as ET
+from config import _ARTICLES_PATH, _NSMAP
+
+
+SENSE_CATEGORIES = {
+    "0": "Bedeutung",
+    "1": "differezierte Bedeutung",
+    "2": "weitere Bedeutung",
+    "3": "weitere Bedeutung",
+}
+
+LIST_CATEGORIES = {
+    "0": ["I.", "II.", "III.", "IV.", "V.", "VI.", "VII.", "VIII.", "IX."],
+    "1": ["1.", "2.", "3.", "4.", "5.", "6.", "7.", "8.", "9."],
+    "2": ["a.", "b.", "c.", "d.", "e.", "f.", "g.", "h.", "i."],
+    "3": ["α.", "β.", "γ.", "δ.", "ε.", "ζ.", "η.", "θ.", "ι."],
+}
+
 GLOSSAR = {
     "POS": "Wortart",
     "HL": "Lemma",
@@ -101,13 +120,14 @@ def create_corpus_from_documents(input: dict) -> list:
 
 
 def create_collection_corpus(simplified_col_data: dict,
-                             collection_corpus: dict = None) -> dict:
+                             article_name: str) -> dict:
     """_summary_
 
     Returns:
         dict: llm training coprus with keys: id, title, content, tags
         all values are strings
     """
+    collection_corpus: dict = dict()
     documents = simplified_col_data["documents"]
     title = simplified_col_data["title"]
     col_id = title.split("__")[0]
@@ -130,4 +150,65 @@ def create_collection_corpus(simplified_col_data: dict,
             "content": "\n".join(doc_corpus),
             "tags": doc_tags
         })
+    article = load_article(article_name)
+    collection_corpus[title]["article"] = article
     return collection_corpus
+
+
+def load_article(article_name: str) -> list:
+    """_summary_
+
+    Returns:
+        list: _description_
+    """
+    article: list = list()
+    path = _ARTICLES_PATH.split("/")
+    path_glob = os.path.join("/", *path, f"{article_name}.xml")
+    tree = ET.parse(path_glob)
+    root = tree.getroot()
+    sense = root.xpath(".//tei:body/tei:entry/tei:sense",
+                       namespaces=_NSMAP)
+    # sense_count = len(sense)
+    article = create_article_corpus(sense, article, idx=0)
+    return article
+
+
+def create_article_corpus(elements: list, article: list, idx: int) -> list:
+    index = 0
+    s_cat = SENSE_CATEGORIES[str(idx)]
+    s_den = LIST_CATEGORIES[str(idx)][index]
+    s_den2 = LIST_CATEGORIES[str(idx + 1)][index]
+    for element in elements:
+        try:
+            sub_elements = element.xpath("./tei:sense",
+                                         namespaces=_NSMAP)
+            sub_elements[0]
+        except IndexError:
+            sub_elements = None
+        if sub_elements is None:
+            try:
+                defi = element.xpath("./tei:def", namespaces=_NSMAP)[0]
+                defi = defi.text
+            except IndexError:
+                continue
+            usage = element.xpath("./tei:usg/tei:placeName",
+                                  namespaces=_NSMAP)
+            usage_list = list()
+            for u in usage:
+                u_type = u.get("type")
+                u_ref = u.get("ref").split("#")[1]
+                u_text = u.text
+                usage_list.append(f"{u_type}: {u_ref} {u_text}")
+            usg_str = "\n".join(usage_list)
+            article.append({
+                    "category": s_cat,
+                    "list": s_den,
+                    "list2": s_den2,
+                    "definition": defi,
+                    "usage": usg_str})
+            # print(f"{s_cat}\n{s_den}\n{defi}\n{usg_str}\n")
+            index += 1
+        else:
+            article = create_article_corpus(sub_elements, article, idx)
+    idx += 1
+    return article
