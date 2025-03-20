@@ -168,7 +168,6 @@ def load_article(article_name: str) -> list:
     root = tree.getroot()
     sense = root.xpath(".//tei:body/tei:entry/tei:sense/tei:sense",
                        namespaces=_NSMAP)
-    # sense_count = len(sense)
     article = create_article_corpus(sense, article, idx=0,
                                     index=0, sub=False)
     return article
@@ -178,6 +177,9 @@ def create_article_corpus(elements: list, article: list,
                           idx: int, index: int, sub: bool) -> list:
     index2 = 0
     for element in elements:
+        ########################################################
+        # test if sub elements exist and create recursive loop #
+        ########################################################
         try:
             sub_elements = element.xpath("./tei:sense",
                                          namespaces=_NSMAP)
@@ -185,9 +187,15 @@ def create_article_corpus(elements: list, article: list,
         except IndexError:
             sub_elements = None
         if sub_elements is None:
+            ############################################################
+            # if no sub elements exist, create article corpus directly #
+            ############################################################
             s_cat = SENSE_CATEGORIES[str(idx)]
             s_den = LIST_CATEGORIES[str(idx)][index]
             s_den2 = LIST_CATEGORIES[str(idx + 1)][index2]
+            ##########################################################
+            # there should be at least one tei:def element or break #
+            ##########################################################
             try:
                 defi = element.xpath("./tei:def", namespaces=_NSMAP)[0]
                 defi = defi.text
@@ -199,6 +207,9 @@ def create_article_corpus(elements: list, article: list,
                 defi2 = f"; {defi2.text}"
             except IndexError:
                 defi2 = ""
+            #####################################################
+            # examples or Belegsätze that also have place names #
+            #####################################################
             try:
                 examples = element.xpath(
                     """./tei:cit[@type='example']/tei:quote|
@@ -214,6 +225,9 @@ def create_article_corpus(elements: list, article: list,
                 examples = " ".join(ex)
             except IndexError:
                 examples = None
+            ########################################
+            # Definitions have place names as well #
+            ########################################
             usage = element.xpath("./tei:usg/tei:placeName",
                                   namespaces=_NSMAP)
             usage_list = list()
@@ -223,17 +237,26 @@ def create_article_corpus(elements: list, article: list,
                 u_text = u.text
                 usage_list.append(f"{u_type}: {u_ref} {u_text}")
             usg_str = "\n".join(usage_list)
+            #########################################
+            # create dict for each definition found #
+            #########################################
             article.append({
                     "category": s_cat,
                     "list": s_den,
                     "list2": s_den2,
                     "definition": f"{defi}{defi2}",
                     "usage": usg_str,
-                    "exmaples": examples})
-            # print(f"{s_cat}\n{s_den}\n{defi}\n{usg_str}\n")
+                    "examples": examples})
         else:
+            ####################################
+            # find more definitions recursivly #
+            ####################################
             article = create_article_corpus(sub_elements, article,
                                             idx, index, sub=True)
+        #######################################
+        # index updates the main definition ###
+        # index2 updates how many where found #
+        #######################################
         if not sub:
             index += 1
         else:
