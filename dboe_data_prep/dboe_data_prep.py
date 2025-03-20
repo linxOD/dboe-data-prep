@@ -127,5 +127,9 @@ if __name__ == "__main__":
                     "unknown" in data_simplified_glob:
                 continue
             simplified_data = load_json(data_simplified_glob)
-            corpus = load_json(data_corpus_glob)
+            # corpus = load_json(data_corpus_glob)
+            corpus = create_collection_corpus(simplified_data, article_name,
+                                              title=None, save=False)
+            with open(data_corpus_glob, 'w') as f:
+                json.dump(corpus, f, ensure_ascii=False)
     print("ended")

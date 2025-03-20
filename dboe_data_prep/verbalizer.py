@@ -53,6 +53,18 @@ TAG_ABBR_DICT = {
     "#Fehler_Frage": "",
     "#Fehler_Spalte_BIBL": "",
 }
+# dict of POS abbreviations
+POS_ABBR_DICT = {
+    "Subst": "Substantiv",
+    "Adj": "Adjektiv",
+    "Verb": "Verb",
+    "Adv": "Adverb",
+    "Präp": "Präposition",
+    "Konj": "Konjunktion",
+    "Pron": "Pronomen",
+    "Interj": "Interjektion",
+    "Part": "Partikel",
+}
 
 
 def create_corpus_from_documents(input: dict) -> list:
@@ -74,7 +86,11 @@ def create_corpus_from_documents(input: dict) -> list:
             except KeyError:
                 title = None
             if isinstance(value, str):
-                content = value
+                if key == "POS":
+                    try:
+                        content = POS_ABBR_DICT[value]
+                    except KeyError:
+                        content = value
             elif isinstance(value, list):
                 count = len(value)
                 desc: str = None
@@ -139,15 +155,62 @@ def load_article(article_name: str) -> list:
     path_glob = os.path.join("/", *path, f"{article_name}.xml")
     tree = ET.parse(path_glob)
     root = tree.getroot()
+    form = root.xpath(
+        ".//tei:body/tei:entry/tei:form[@type='lemma']/tei:orth/text()",
+        namespaces=_NSMAP)
+    form = " ".join(form)
+    variant = root.xpath(
+        ".//tei:body/tei:entry/tei:form[@type='variant']",
+        namespaces=_NSMAP)
+    if len(variant) != 0:
+        variant_forms = list()
+        variant_subtype = list()
+        variant_gender = list()
+        for v in variant:
+            variant_form = v.xpath(".//tei:orth/text()", namespaces=_NSMAP)
+            variant_form = " ".join(variant_form)
+            variant_forms.append(variant_form)
+            v_subtype = v.get("subtype").capitalize()
+            if v_subtype not in variant_subtype:
+                variant_subtype.append(v_subtype)
+            v_gender = v.xpath("./tei:gramGrp/tei:gram[@type='gender']/text()",
+                               namespaces=_NSMAP)
+            v_gender = " ".join(v_gender)
+            if v_gender not in variant_gender:
+                variant_gender.append(v_gender)
+        variant_subtype = " ".join(variant_subtype)
+        variant_gender = " ".join(variant_gender)
+        variant_forms = ', '.join(variant_forms)
+        variants = f"{variant_forms} ({variant_subtype}, {variant_gender})"
+    else:
+        variants = None
+    pos = root.xpath(
+        ".//tei:body/tei:entry/tei:gramGrp/tei:gram[@type='pos']/text()",
+        namespaces=_NSMAP)
+    pos = " ".join(pos)
+    gender = root.xpath(
+        ".//tei:body/tei:entry/tei:gramGrp/tei:gram[@type='gender']/text()",
+        namespaces=_NSMAP)
+    if len(gender) != 0:
+        gender = f"({' '.join(gender)})"
+    else:
+        gender = None
     sense = root.xpath(".//tei:body/tei:entry/tei:sense/tei:sense",
                        namespaces=_NSMAP)
-    article = create_article_corpus(sense, article, idx=0,
-                                    index=0, sub=False)
+    article_definitions = create_article_definitions(sense, article, idx=0,
+                                                     index=0, sub=False)
+    article = {
+        "lemma": form,
+        "pos": pos,
+        "gender": gender,
+        "variants": variants,
+        "definitions": article_definitions
+    }
     return article
 
 
-def create_article_corpus(elements: list, article: list,
-                          idx: int, index: int, sub: bool) -> list:
+def create_article_definitions(elements: list, article: list,
+                               idx: int, index: int, sub: bool) -> list:
     index2 = 0
     for element in elements:
         ########################################################
@@ -224,8 +287,8 @@ def create_article_corpus(elements: list, article: list,
             ####################################
             # find more definitions recursivly #
             ####################################
-            article = create_article_corpus(sub_elements, article,
-                                            idx, index, sub=True)
+            article = create_article_definitions(sub_elements, article,
+                                                 idx, index, sub=True)
         #######################################
         # index updates the main definition ###
         # index2 updates how many where found #
