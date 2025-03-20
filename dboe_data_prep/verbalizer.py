@@ -1,22 +1,25 @@
 import os
 from lxml import etree as ET
-from config import _ARTICLES_PATH, _NSMAP
+from utils import save_dict_to_json
+from config import _ARTICLES_PATH, _NSMAP, _OUTPUT_PATH
 
+OUTPUT_PATH = _OUTPUT_PATH
 
+# up to four categories are possible
 SENSE_CATEGORIES = {
     "0": "Bedeutung",
     "1": "differezierte Bedeutung",
     "2": "weitere Bedeutung",
     "3": "weitere Bedeutung",
 }
-
+# each category has a different list of subcategories
 LIST_CATEGORIES = {
     "0": ["I.", "II.", "III.", "IV.", "V.", "VI.", "VII.", "VIII.", "IX."],
     "1": ["1.", "2.", "3.", "4.", "5.", "6.", "7.", "8.", "9."],
     "2": ["a.", "b.", "c.", "d.", "e.", "f.", "g.", "h.", "i."],
     "3": ["α.", "β.", "γ.", "δ.", "ε.", "ζ.", "η.", "θ.", "ι."],
 }
-
+# the glossar is used to create the corpus and translate the column keys
 GLOSSAR = {
     "POS": "Wortart",
     "HL": "Lemma",
@@ -31,7 +34,7 @@ GLOSSAR = {
     "DIV": "Diverses",
     "tags": "Kategorie"
 }
-
+# the tags are used to create the corpus and translate the tag abbreviations
 TAG_ABBR_DICT = {
     "#simp_ja": "Die Wortstruktur ist ein Simplex.",
     "#simp_nein": "Die Wortstruktur ist ein Kompositum.",
@@ -87,9 +90,15 @@ def create_corpus_from_documents(input: dict) -> list:
                     for i in value:
                         if isinstance(i, str):
                             sub_content.append(i)
+                        # sometimes there are translations
+                        # keys: orig, translated as dict
                         elif isinstance(i, dict):
                             sub_title = "Hochdeutsch und Dialekt"
                             for k, v in i.items():
+                                if k == "orig":
+                                    k = "Dialekt"
+                                elif k == "translated":
+                                    k = "Hochdeutsch"
                                 sub_content.append(f"{k}: {v}")
                         else:
                             raise ValueError("Value type not supported.")
@@ -117,42 +126,6 @@ def create_corpus_from_documents(input: dict) -> list:
     else:
         raise ValueError("Value type not supported.")
     return text_structure
-
-
-def create_collection_corpus(simplified_col_data: dict,
-                             article_name: str) -> dict:
-    """_summary_
-
-    Returns:
-        dict: llm training coprus with keys: id, title, content, tags
-        all values are strings
-    """
-    collection_corpus: dict = dict()
-    documents = simplified_col_data["documents"]
-    title = simplified_col_data["title"]
-    col_id = title.split("__")[0]
-    col_title = title.split("__")[1].split("_")[0]
-    collection_corpus[title] = dict()
-    collection_corpus[title]["id"] = col_id
-    collection_corpus[title]["title"] = col_title
-    collection_corpus[title]["documents"] = list()
-    collection_corpus[title]["doc_count"] = len(documents)
-    for document in documents:
-        doc_corpus = create_corpus_from_documents(document["source"])
-        doc_tags = create_corpus_from_documents(document["tags"])
-        if len(doc_corpus) == 0:
-            continue
-        if len(doc_tags) == 0:
-            doc_tags = "Es sind keine relevanten Kategorien verfügbar."
-        else:
-            doc_tags = "\n".join(doc_tags)
-        collection_corpus[title]["documents"].append({
-            "content": "\n".join(doc_corpus),
-            "tags": doc_tags
-        })
-    article = load_article(article_name)
-    collection_corpus[title]["article"] = article
-    return collection_corpus
 
 
 def load_article(article_name: str) -> list:
@@ -262,3 +235,43 @@ def create_article_corpus(elements: list, article: list,
         else:
             index2 += 1
     return article
+
+
+def create_collection_corpus(simplified_col_data: dict,
+                             article_name: str, title: str,
+                             save: bool) -> dict:
+    """_summary_
+
+    Returns:
+        dict: llm training coprus with keys: id, title, content, tags
+        all values are strings
+    """
+    collection_corpus: dict = dict()
+    documents = simplified_col_data["documents"]
+    title = simplified_col_data["title"]
+    col_id = title.split("__")[0]
+    col_title = title.split("__")[1].split("_")[0]
+    collection_corpus[title] = dict()
+    collection_corpus[title]["id"] = col_id
+    collection_corpus[title]["title"] = col_title
+    collection_corpus[title]["documents"] = list()
+    collection_corpus[title]["doc_count"] = len(documents)
+    for document in documents:
+        doc_corpus = create_corpus_from_documents(document["source"])
+        doc_tags = create_corpus_from_documents(document["tags"])
+        if len(doc_corpus) == 0:
+            continue
+        if len(doc_tags) == 0:
+            doc_tags = "Es sind keine relevanten Kategorien verfügbar."
+        else:
+            doc_tags = "\n".join(doc_tags)
+        collection_corpus[title]["documents"].append({
+            "content": "\n".join(doc_corpus),
+            "tags": doc_tags
+        })
+    article = load_article(article_name)
+    collection_corpus[title]["article"] = article
+    if save:
+        save_dict_to_json(OUTPUT_PATH, collection_corpus,
+                          title, "llm_corpus.json")
+    return collection_corpus

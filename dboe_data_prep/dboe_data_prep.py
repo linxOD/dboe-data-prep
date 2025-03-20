@@ -98,10 +98,14 @@ if __name__ == "__main__":
                                                    "documents_and_tags")
             data_date, data_glob = get_date_from_dir(INPUT_PATH, col_id,
                                                      "data_response")
-            data_date, data_simplified_glob = get_date_from_dir(
+            normdata_date, data_simplified_glob = get_date_from_dir(
                 INPUT_PATH,
                 col_id,
                 "simplified_normalized_data")
+            corpus_date, data_corpus_glob = get_date_from_dir(
+                INPUT_PATH,
+                col_id,
+                "llm_corpus")
             is_outdated = is_file_outdated(doc_date, _EXPIRY_TIME)
         except IndexError:
             is_outdated = True
@@ -109,10 +113,13 @@ if __name__ == "__main__":
             doc_data, doc_tags, title = dd.download_collection(sorted_tags)
             if doc_data is None:
                 continue
+            print(f"Using existing simplified file: {data_simplified_glob}")
             simplified_data = collection_data_to_simplified_dict(doc_data,
                                                                  doc_tags,
                                                                  title,
                                                                  save=True)
+            corpus = create_collection_corpus(simplified_data, article_name,
+                                              title, save=True)
         else:
             print(f"Using existing simplified file: {data_simplified_glob}")
             if "error" in data_simplified_glob or\
@@ -120,9 +127,5 @@ if __name__ == "__main__":
                     "unknown" in data_simplified_glob:
                 continue
             simplified_data = load_json(data_simplified_glob)
-            corpus = create_collection_corpus(simplified_data, article_name)
-            corpus_path = data_simplified_glob.split("/")
-            corpus_path = os.path.join("./output", corpus_path[1])
-            with open(os.path.join(corpus_path, "llm_corpus.json"), 'w') as f:
-                json.dump(corpus, f, ensure_ascii=False)
+            corpus = load_json(data_corpus_glob)
     print("ended")
