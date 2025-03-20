@@ -166,18 +166,17 @@ def load_article(article_name: str) -> list:
     path_glob = os.path.join("/", *path, f"{article_name}.xml")
     tree = ET.parse(path_glob)
     root = tree.getroot()
-    sense = root.xpath(".//tei:body/tei:entry/tei:sense",
+    sense = root.xpath(".//tei:body/tei:entry/tei:sense/tei:sense",
                        namespaces=_NSMAP)
     # sense_count = len(sense)
-    article = create_article_corpus(sense, article, idx=0)
+    article = create_article_corpus(sense, article, idx=0,
+                                    index=0, sub=False)
     return article
 
 
-def create_article_corpus(elements: list, article: list, idx: int) -> list:
-    index = 0
-    s_cat = SENSE_CATEGORIES[str(idx)]
-    s_den = LIST_CATEGORIES[str(idx)][index]
-    s_den2 = LIST_CATEGORIES[str(idx + 1)][index]
+def create_article_corpus(elements: list, article: list,
+                          idx: int, index: int, sub: bool) -> list:
+    index2 = 0
     for element in elements:
         try:
             sub_elements = element.xpath("./tei:sense",
@@ -186,11 +185,35 @@ def create_article_corpus(elements: list, article: list, idx: int) -> list:
         except IndexError:
             sub_elements = None
         if sub_elements is None:
+            s_cat = SENSE_CATEGORIES[str(idx)]
+            s_den = LIST_CATEGORIES[str(idx)][index]
+            s_den2 = LIST_CATEGORIES[str(idx + 1)][index2]
             try:
                 defi = element.xpath("./tei:def", namespaces=_NSMAP)[0]
                 defi = defi.text
             except IndexError:
                 continue
+            try:
+                defi2 = element.xpath("./tei:def[@type='umschreibung']",
+                                      namespaces=_NSMAP)[0]
+                defi2 = f"; {defi2.text}"
+            except IndexError:
+                defi2 = ""
+            try:
+                examples = element.xpath(
+                    """./tei:cit[@type='example']/tei:quote|
+                    ./tei:cit[@type='example']/tei:usg/tei:placeName""",
+                    namespaces=_NSMAP)
+                examples[0]
+                ex = []
+                for e in examples:
+                    if e.tag == "{http://www.tei-c.org/ns/1.0}quote":
+                        ex.append(f"– {" ".join(e.xpath(".//text()"))}")
+                    elif e.tag == "{http://www.tei-c.org/ns/1.0}placeName":
+                        ex.append(f"({" ".join(e.xpath(".//text()"))})")
+                examples = " ".join(ex)
+            except IndexError:
+                examples = None
             usage = element.xpath("./tei:usg/tei:placeName",
                                   namespaces=_NSMAP)
             usage_list = list()
@@ -204,11 +227,15 @@ def create_article_corpus(elements: list, article: list, idx: int) -> list:
                     "category": s_cat,
                     "list": s_den,
                     "list2": s_den2,
-                    "definition": defi,
-                    "usage": usg_str})
+                    "definition": f"{defi}{defi2}",
+                    "usage": usg_str,
+                    "exmaples": examples})
             # print(f"{s_cat}\n{s_den}\n{defi}\n{usg_str}\n")
+        else:
+            article = create_article_corpus(sub_elements, article,
+                                            idx, index, sub=True)
+        if not sub:
             index += 1
         else:
-            article = create_article_corpus(sub_elements, article, idx)
-    idx += 1
+            index2 += 1
     return article
