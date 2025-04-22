@@ -12,7 +12,7 @@ from doc import (get_documents, get_documents_id, get_document_data,
 from text import collection_data_to_simplified_dict
 from config import _API_VAR_MD, _API_VAR_DATA, \
     _EXPIRY_TIME, _OUTPUT_PATH
-from verbalizer import create_collection_corpus
+from verbalizer import create_collection_corpus, create_text_corpus_as_txt
 
 
 INPUT_PATH = _OUTPUT_PATH
@@ -132,4 +132,8 @@ if __name__ == "__main__":
                                               title=None, save=False)
             with open(data_corpus_glob, 'w') as f:
                 json.dump(corpus, f, ensure_ascii=False)
-    print("ended")
+            os.makedirs(os.path.join(INPUT_PATH, "llm_corpus"), exist_ok=True)
+            data_text_glob = os.path.join(
+                INPUT_PATH, "llm_corpus", f"{article_name}.txt")
+            create_text_corpus_as_txt(corpus, save_path=data_text_glob)
+        print("ended")

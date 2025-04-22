@@ -1,4 +1,5 @@
 import os
+import json
 from lxml import etree as ET
 from utils import save_dict_to_json
 from config import _ARTICLES_PATH, _NSMAP, _OUTPUT_PATH
@@ -9,8 +10,12 @@ OUTPUT_PATH = _OUTPUT_PATH
 SENSE_CATEGORIES = {
     "0": "Bedeutung",
     "1": "differezierte Bedeutung",
-    "2": "weitere Bedeutung",
-    "3": "weitere Bedeutung",
+    "2": "weitere Bedeutung 1",
+    "3": "weitere Bedeutung 2",
+    "4": "weitere Bedeutung 3",
+    "5": "weitere Bedeutung 4",
+    "6": "weitere Bedeutung 5",
+    "7": "weitere Bedeutung 6",
 }
 # each category has a different list of subcategories
 LIST_CATEGORIES = {
@@ -19,52 +24,74 @@ LIST_CATEGORIES = {
     "2": ["a.", "b.", "c.", "d.", "e.", "f.", "g.", "h.", "i."],
     "3": ["α.", "β.", "γ.", "δ.", "ε.", "ζ.", "η.", "θ.", "ι."],
 }
+
+# Einleitung
+INTRODUCTION = """Es folgt eine Beschreibung von Schlagwörtern,
+die in der darauf folgenden Sammlung von Belegen verwendet werden:"""
+
+
 # the glossar is used to create the corpus and translate the column keys
-GLOSSAR = {
-    "POS": "Wortart",
-    "HL": "Lemma",
-    "NR": "Fragebogennummer",
-    "KT1": "Belegsatz 1",
-    "KT2": "Belegsatz 2",
-    "BD/KT*": "Belegsatz/Kontext",
-    "BD/LT*": "Belegsatz/Bedeutung",
-    "Großregion1": "Regionale Zuordnung",
-    "LT1_theutonista": "Lexemtheutonista / Aussprache",
-    "ANM": "Anmerkung",
-    "DIV": "Diverses",
-    "tags": "Kategorie"
-}
-# the tags are used to create the corpus and translate the tag abbreviations
-TAG_ABBR_DICT = {
-    "#simp_ja": "Die Wortstruktur ist ein Simplex.",
-    "#simp_nein": "Die Wortstruktur ist ein Kompositum.",
-    "#rel_zeit": "Die zeitliche Zuordnung ist relevant.",
-    "#irr_zeit": "Die zeitliche Zuordnung ist irrelevant.",
-    "#rel_reg": "Die regionale Zuordnung ist relevant.",
-    "#irr_reg": "Die regionale Zuordnung ist irrelevant.",
-    "#Bed_unklar": "Die Bedeutung des Wortes ist unklar.",
-    "#Belegsatz": "Für das Wort ist ein Belegsatz vorhanden.",
-    "#redewendung": "Der Belegsatz ist eine Redewendung.",
-    "#unklar": "",
-    "#Fehler_Sigle": "",
-    "#Fehler_Rudolf": "",
-    "#Fehler_Tir": "",
-    "#Fehler_Transliteration": "",
-    "#Fehler_Frage": "",
-    "#Fehler_Spalte_BIBL": "",
-}
-# dict of POS abbreviations
-POS_ABBR_DICT = {
-    "Subst": "Substantiv",
-    "Adj": "Adjektiv",
-    "Verb": "Verb",
-    "Adv": "Adverb",
-    "Präp": "Präposition",
-    "Konj": "Konjunktion",
-    "Pron": "Pronomen",
-    "Interj": "Interjektion",
-    "Part": "Partikel",
-}
+with open("json_dumps/Bedeutung.json", "r", encoding="utf-8") as f:
+    BEDEUTUNG = json.load(f)
+
+GLOSSAR_NAME = dict()
+GLOSSAR_DESCRIPTION = dict()
+
+for _, v in BEDEUTUNG.items():
+    if isinstance(v, dict):
+        key = v["Key"]
+        name = v["Name"]
+        description = v["Beschreibung"]
+        GLOSSAR_NAME[key] = name
+        GLOSSAR_DESCRIPTION[key] = description
+
+# GLOSSAR = {
+#     "POS": "Wortart",
+#     "HL": "Lemma",
+#     "NR": "Fragebogennummer",
+#     "KT1": "Belegsatz 1",
+#     "KT2": "Belegsatz 2",
+#     "BD/KT*": "Belegsatz/Kontext",
+#     "BD/LT*": "Belegsatz/Bedeutung",
+#     "Großregion1": "Regionale Zuordnung",
+#     "LT1_theutonista": "Lexemtheutonista / Aussprache",
+#     "ANM": "Anmerkung",
+#     "DIV": "Diverses",
+#     "tags": "Kategorie"
+# }
+
+# # the tags are used to create the corpus and translate the tag abbreviations
+# TAG_ABBR_DICT = {
+#     "#simp_ja": "Die Wortstruktur ist ein Simplex.",
+#     "#simp_nein": "Die Wortstruktur ist ein Kompositum.",
+#     "#rel_zeit": "Die zeitliche Zuordnung ist relevant.",
+#     "#irr_zeit": "Die zeitliche Zuordnung ist irrelevant.",
+#     "#rel_reg": "Die regionale Zuordnung ist relevant.",
+#     "#irr_reg": "Die regionale Zuordnung ist irrelevant.",
+#     "#Bed_unklar": "Die Bedeutung des Wortes ist unklar.",
+#     "#Belegsatz": "Für das Wort ist ein Belegsatz vorhanden.",
+#     "#redewendung": "Der Belegsatz ist eine Redewendung.",
+#     "#unklar": "",
+#     "#Fehler_Sigle": "",
+#     "#Fehler_Rudolf": "",
+#     "#Fehler_Tir": "",
+#     "#Fehler_Transliteration": "",
+#     "#Fehler_Frage": "",
+#     "#Fehler_Spalte_BIBL": "",
+# }
+
+# # dict of POS abbreviations
+# POS_ABBR_DICT = {
+#     "Subst": "Substantiv",
+#     "Adj": "Adjektiv",
+#     "Verb": "Verb",
+#     "Adv": "Adverb",
+#     "Präp": "Präposition",
+#     "Konj": "Konjunktion",
+#     "Pron": "Pronomen",
+#     "Interj": "Interjektion",
+#     "Part": "Partikel",
+# }
 
 
 def create_corpus_from_documents(input: dict) -> list:
@@ -82,24 +109,24 @@ def create_corpus_from_documents(input: dict) -> list:
             title: str = None
             content: str = None
             try:
-                title = GLOSSAR[key]
+                title = GLOSSAR_NAME[key]
             except KeyError:
                 title = None
             if isinstance(value, str):
                 if key == "POS":
                     try:
-                        content = POS_ABBR_DICT[value]
+                        content = GLOSSAR_NAME[value]
                     except KeyError:
                         content = value
             elif isinstance(value, list):
                 count = len(value)
-                desc: str = None
-                if count == 1:
-                    desc = "Eintrag:"
-                elif count > 1:
-                    desc = "mit Semikolon getrennte Einträge:"
-                else:
-                    desc = "Keine Einträge vorhanden."
+                # desc: str = None
+                # if count == 1:
+                #     desc = "Eintrag:"
+                # elif count > 1:
+                #     desc = "mit Semikolon getrennte Einträge:"
+                # else:
+                #     desc = "Keine Einträge vorhanden."
                 if count > 0:
                     sub_title: str = None
                     sub_content = list()
@@ -120,23 +147,27 @@ def create_corpus_from_documents(input: dict) -> list:
                             raise ValueError("Value type not supported.")
                     value_str = "; ".join(sub_content)
                     if sub_title is not None:
-                        content = f"{count} {desc} {sub_title}: {value_str}"
+                        # content = f"{count} {desc} {sub_title}: {value_str}"
+                        content = value_str
                     else:
-                        content = f"{count} {desc} {value_str}"
+                        # content = f"{count} {desc} {value_str}"
+                        content = value_str
             else:
                 raise ValueError("Value type not supported.")
             if title is not None and content is not None:
-                text_structure.append(f"{title}\n{content}\n")
+                text_structure.append(f"###{title}###\n{content}\n")
     elif isinstance(input, list):
-        title: str = GLOSSAR["tags"]
+        title: str = GLOSSAR_NAME["tags"]
         content: list = list()
         for item in input:
             if item.strip()[0] == "#":
-                content.append(TAG_ABBR_DICT[item.strip()])
+                item_normalized = GLOSSAR_NAME[item.strip()]
+                if item_normalized != "":
+                    content.append(item_normalized)
             else:
                 content.append(" ".join(item.split("_")))
         if len(content) > 0:
-            text_structure.append(f"{title}\n{"\n".join(content)}\n")
+            text_structure.append(f"###{title}###\n{"\n".join(content)}\n")
     elif isinstance(input, str):
         return input
     else:
@@ -197,8 +228,7 @@ def load_article(article_name: str) -> list:
         gender = None
     sense = root.xpath(".//tei:body/tei:entry/tei:sense/tei:sense",
                        namespaces=_NSMAP)
-    article_definitions = create_article_definitions(sense, article, idx=0,
-                                                     index=0, sub=False)
+    article_definitions = create_article_definitions(sense, article)
     article = {
         "lemma": form,
         "pos": pos,
@@ -210,8 +240,11 @@ def load_article(article_name: str) -> list:
 
 
 def create_article_definitions(elements: list, article: list,
-                               idx: int, index: int, sub: bool) -> list:
+                               idx: int = 0, index: int = 0,
+                               sub: int = 0) -> list:
     index2 = 0
+    index3 = 0
+    index4 = 0
     for element in elements:
         ########################################################
         # test if sub elements exist and create recursive loop #
@@ -226,9 +259,17 @@ def create_article_definitions(elements: list, article: list,
             ############################################################
             # if no sub elements exist, create article corpus directly #
             ############################################################
-            s_cat = SENSE_CATEGORIES[str(idx)]
+            s_cat = SENSE_CATEGORIES[str(index)]
             s_den = LIST_CATEGORIES[str(idx)][index]
-            s_den2 = LIST_CATEGORIES[str(idx + 1)][index2]
+            if sub == 1:
+                s_den2 = LIST_CATEGORIES[str(idx + 1)][index2]
+            if sub == 2:
+                s_den2 = LIST_CATEGORIES[str(idx + 1)][index2 + 1]
+                s_den3 = LIST_CATEGORIES[str(idx + 2)][index3]
+            if sub == 3:
+                s_den2 = LIST_CATEGORIES[str(idx + 1)][index2 + 1]
+                s_den3 = LIST_CATEGORIES[str(idx + 2)][index3 + 1]
+                s_den4 = LIST_CATEGORIES[str(idx + 3)][index4]
             ##########################################################
             # there should be at least one tei:def element or break #
             ##########################################################
@@ -272,14 +313,16 @@ def create_article_definitions(elements: list, article: list,
                 u_ref = u.get("ref").split("#")[1]
                 u_text = u.text
                 usage_list.append(f"{u_type}: {u_ref} {u_text}")
-            usg_str = "\n".join(usage_list)
+            usg_str = "; ".join(usage_list)
             #########################################
             # create dict for each definition found #
             #########################################
             article.append({
                     "category": s_cat,
                     "list": s_den,
-                    "list2": s_den2,
+                    "list2": s_den2 if sub >= 1 else None,
+                    "list3": s_den3 if sub >= 2 else None,
+                    "list4": s_den4 if sub >= 3 else None,
                     "definition": f"{defi}{defi2}",
                     "usage": usg_str,
                     "examples": examples})
@@ -288,15 +331,19 @@ def create_article_definitions(elements: list, article: list,
             # find more definitions recursivly #
             ####################################
             article = create_article_definitions(sub_elements, article,
-                                                 idx, index, sub=True)
+                                                 idx, index, sub=sub+1)
         #######################################
         # index updates the main definition ###
         # index2 updates how many where found #
         #######################################
-        if not sub:
+        if sub == 0:
             index += 1
-        else:
+        elif sub == 1:
             index2 += 1
+        elif sub == 2:
+            index3 += 1
+        else:
+            index4 += 1
     return article
 
 
@@ -338,3 +385,50 @@ def create_collection_corpus(simplified_col_data: dict,
         save_dict_to_json(OUTPUT_PATH, collection_corpus,
                           title, "llm_corpus.json")
     return collection_corpus
+
+
+def create_text_corpus_as_txt(corpus: dict, save_path: str) -> None:
+    """_summary_
+
+    Args:
+        corpus (dict): _description_
+        save (bool): _description_
+
+    Returns:
+        dict: _description_
+    """
+    for key, value in corpus.items():
+        title = value["title"]
+        documents = value["documents"]
+        article = value["article"]
+        articles_definitions = article["definitions"]
+        with open(save_path, "w") as f:
+            f.write(INTRODUCTION + "\n")
+            for k, v in GLOSSAR_NAME.items():
+                f.write(f"""###{v}###\n{GLOSSAR_DESCRIPTION[k]}\n\n""")
+            f.write(f"\n##Lemma: {title}##\n")
+            f.write(f"Anzahl Belege: {value['doc_count']}\n\n")
+            count = 1
+            for doc in documents:
+                f.write(f"Beleg {count}:\n")
+                f.write(f"{doc['content']}\n")
+                f.write(f"{doc['tags']}\n")
+                count += 1
+            f.write("\n\nEs folgen die aus den Belegen abgeleiteten Bedeutungen:\n")
+            f.write(f"##Lemma: {article['lemma']}##\n")
+            f.write(f"###Wortart: {article['pos']} ")
+            f.write(f"{article['gender']}###\n")
+            if article['variants'] is not None:
+                f.write(f"###Wortvariationen: {article['variants']}###\n")
+            for a in articles_definitions:
+                cat = a['category']
+                li = a['list']
+                li2 = f" {a['list2']}" if a['list2'] is not None else ""
+                li3 = f" {a['list3']}" if a['list3'] is not None else ""
+                li4 = f" {a['list4']}" if a['list4'] is not None else ""
+                f.write(f"{cat} – {li}{li2}{li3}{li4}: ")
+                f.write(f"{a['definition']}; ")
+                # f.write(f"{a['usage']}")
+                if a['examples'] is not None:
+                    f.write(f"{a['examples']}")
+                f.write("\n")

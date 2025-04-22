@@ -14,7 +14,7 @@ _SLEEP_TIME_API = 0.1
 _SLEEP_TIME_DICT = 0.01
 ####################################################################
 # configure expiry time for files in days as int
-_EXPIRY_TIME = 60
+_EXPIRY_TIME = 365
 ####################################################################
 # save urls and collection titles under the following variable names
 # as enviroment varialbes
