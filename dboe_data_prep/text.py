@@ -1,4 +1,4 @@
-from utils import create_add_log, save_dict_to_json, sleeping
+from utils import DBOEUtils
 from config import _SLEEP_TIME_DICT, _OUTPUT_PATH
 
 
@@ -23,6 +23,7 @@ TO_REPLACE_STR = [
     "LT6",
     "LT7"
 ]
+utils = DBOEUtils()
 
 
 def get_dict_values(data: dict | list | None,
@@ -52,6 +53,7 @@ def normalize_strings(data: dict) -> dict:
     Returns:
         dict: _description_
     """
+    form = {}
     for key, value in data.items():
         if isinstance(value, str):
             for replace in TO_REPLACE_STR:
@@ -82,12 +84,17 @@ def normalize_strings(data: dict) -> dict:
                 else:
                     raise ValueError("Value is not a string.")
             if key == "KT1" and len(value) == 2:
-                data[key] = value[1]
+                data[key] = value[1].strip()
+            if key == "HL" or key == "BD/LT*":
+                data[key] = value[0].strip()
+            if key == "NR":
+                data[key] = value[0].strip().split(": ")[0]
+                form[data[key]] = value[0].strip().split(": ")[1:]
             else:
                 data[key] = value
         else:
             raise ValueError("Value type not supported.")
-    return data
+    return data, form
 
 
 def collection_data_to_simplified_dict(data: dict, tags: dict,
@@ -106,15 +113,19 @@ def collection_data_to_simplified_dict(data: dict, tags: dict,
     simplified_data = dict()
     simplified_data["title"] = title
     simplified_data["documents"] = list()
-    data = data.json()
+    simplified_data["form"] = dict()
+    if isinstance(data, dict):
+        data = data
+    else:
+        data = data.json()
     docs = data["docs"]
     next_doc = True
     while next_doc:
         try:
             doc = docs.pop()
-            create_add_log(OUTPUT_PATH,
-                           f"Start simplifying document: {doc['_id']}",
-                           title, "simplify_log.txt")
+            utils.create_add_log(OUTPUT_PATH,
+                                 f"Start simplifying document: {doc['_id']}",
+                                 title, "simplify_log.txt")
         except IndexError:
             next_doc = False
             continue
@@ -129,17 +140,18 @@ def collection_data_to_simplified_dict(data: dict, tags: dict,
                                        "ANM",
                                        "DIV",
                                        "Großregion1"])
-        normalized_data = normalize_strings(dict_values)
+        normalized_data, form = normalize_strings(dict_values)
         simplified_dict["source"] = normalized_data
+        simplified_data["form"].update(form)
         simplified_dict["tags"] = tags[str(doc["_id"])]
         simplified_data["documents"].append(simplified_dict)
-        create_add_log(OUTPUT_PATH,
-                       f"Ended simplifying document: {doc['_id']}",
-                       title, "simplify_log.txt")
-        sleeping(_SLEEP_TIME_DICT)
+        utils.create_add_log(OUTPUT_PATH,
+                             f"Ended simplifying document: {doc['_id']}",
+                             title, "simplify_log.txt")
+        utils.sleeping(_SLEEP_TIME_DICT)
     if save:
-        save_dict_to_json(OUTPUT_PATH, simplified_data, title,
-                          "simplified_normalized_data.json")
+        utils.save_dict_to_json(OUTPUT_PATH, simplified_data, title,
+                                "simplified_normalized_data.json")
     return simplified_data
 
 

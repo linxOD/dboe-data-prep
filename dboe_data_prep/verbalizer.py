@@ -1,9 +1,10 @@
 import os
 import json
 from lxml import etree as ET
-from utils import save_dict_to_json
+from utils import DBOEUtils
 from config import _ARTICLES_PATH, _NSMAP, _OUTPUT_PATH
 
+utils = DBOEUtils()
 OUTPUT_PATH = _OUTPUT_PATH
 
 # up to four categories are possible
@@ -26,9 +27,7 @@ LIST_CATEGORIES = {
 }
 
 # Einleitung
-INTRODUCTION = """Es folgt eine Beschreibung von Schlagwörtern,
-die in der darauf folgenden Sammlung von Belegen verwendet werden:"""
-
+INTRODUCTION = "Glossar:"
 
 # the glossar is used to create the corpus and translate the column keys
 with open("json_dumps/Bedeutung.json", "r", encoding="utf-8") as f:
@@ -118,6 +117,8 @@ def create_corpus_from_documents(input: dict) -> list:
                         content = GLOSSAR_NAME[value]
                     except KeyError:
                         content = value
+                else:
+                    content = value
             elif isinstance(value, list):
                 count = len(value)
                 # desc: str = None
@@ -155,7 +156,7 @@ def create_corpus_from_documents(input: dict) -> list:
             else:
                 raise ValueError("Value type not supported.")
             if title is not None and content is not None:
-                text_structure.append(f"###{title}###\n{content}\n")
+                text_structure.append(f", {title}: {content.strip()}")
     elif isinstance(input, list):
         title: str = GLOSSAR_NAME["tags"]
         content: list = list()
@@ -167,7 +168,7 @@ def create_corpus_from_documents(input: dict) -> list:
             else:
                 content.append(" ".join(item.split("_")))
         if len(content) > 0:
-            text_structure.append(f"###{title}###\n{"\n".join(content)}\n")
+            text_structure.append(f"{title}\n{"\n".join(content)}")
     elif isinstance(input, str):
         return input
     else:
@@ -359,31 +360,35 @@ def create_collection_corpus(simplified_col_data: dict,
     collection_corpus: dict = dict()
     documents = simplified_col_data["documents"]
     title = simplified_col_data["title"]
+    form = simplified_col_data["form"]
     col_id = title.split("__")[0]
+    print(title)
     col_title = title.split("__")[1].split("_")[0]
     collection_corpus[title] = dict()
     collection_corpus[title]["id"] = col_id
     collection_corpus[title]["title"] = col_title
     collection_corpus[title]["documents"] = list()
     collection_corpus[title]["doc_count"] = len(documents)
+    collection_corpus[title]["form"] = form
     for document in documents:
         doc_corpus = create_corpus_from_documents(document["source"])
-        doc_tags = create_corpus_from_documents(document["tags"])
-        if len(doc_corpus) == 0:
-            continue
-        if len(doc_tags) == 0:
-            doc_tags = "Es sind keine relevanten Kategorien verfügbar."
-        else:
-            doc_tags = "\n".join(doc_tags)
+        # doc_tags = create_corpus_from_documents(document["tags"])
+        # if len(doc_corpus) == 0:
+        #     continue
+        # if len(doc_tags) == 0:
+        #     doc_tags = "Es sind keine relevanten Kategorien verfügbar."
+        # else:
+        #     doc_tags = "\n".join(doc_tags)
         collection_corpus[title]["documents"].append({
-            "content": "\n".join(doc_corpus),
-            "tags": doc_tags
+            "content": "".join(doc_corpus),
+            "id": document["id"],
+            # "tags": doc_tags
         })
-    article = load_article(article_name)
-    collection_corpus[title]["article"] = article
+    # article = load_article(article_name)
+    # collection_corpus[title]["article"] = article
     if save:
-        save_dict_to_json(OUTPUT_PATH, collection_corpus,
-                          title, "llm_corpus.json")
+        utils.save_dict_to_json(OUTPUT_PATH, collection_corpus,
+                                title, "llm_corpus.json")
     return collection_corpus
 
 
@@ -397,38 +402,49 @@ def create_text_corpus_as_txt(corpus: dict, save_path: str) -> None:
     Returns:
         dict: _description_
     """
-    for key, value in corpus.items():
+    for _, value in corpus.items():
         title = value["title"]
         documents = value["documents"]
-        article = value["article"]
-        articles_definitions = article["definitions"]
+        form = value["form"]
         with open(save_path, "w") as f:
             f.write(INTRODUCTION + "\n")
             for k, v in GLOSSAR_NAME.items():
-                f.write(f"""###{v}###\n{GLOSSAR_DESCRIPTION[k]}\n\n""")
-            f.write(f"\n##Lemma: {title}##\n")
-            f.write(f"Anzahl Belege: {value['doc_count']}\n\n")
+                f.write(f"{v}: {GLOSSAR_DESCRIPTION[k]}\n")
+            f.write("Auflistung von relevanten Fragebogennummern und\
+Beschreibungen:\n")
+            for k, v in form.items():
+                f.write(f"{k}: {" ".join(v)}\n")
+            f.write("Es folgt eine Sammlung von Belegen:\n")
+            f.write(f"Das Lemma der Sammlung lautet: {title}\n")
+            f.write(f"Anzahl Belege: {value['doc_count']}\n")
             count = 1
             for doc in documents:
-                f.write(f"Beleg {count}:\n")
-                f.write(f"{doc['content']}\n")
-                f.write(f"{doc['tags']}\n")
+                f.write(f"Beleg ID: {doc["id"]}")
+                f.write(f"{doc['content']};\n")
+                # f.write(f"{doc['tags']}\n")
                 count += 1
-            f.write("\n\nEs folgen die aus den Belegen abgeleiteten Bedeutungen:\n")
-            f.write(f"##Lemma: {article['lemma']}##\n")
-            f.write(f"###Wortart: {article['pos']} ")
-            f.write(f"{article['gender']}###\n")
-            if article['variants'] is not None:
-                f.write(f"###Wortvariationen: {article['variants']}###\n")
-            for a in articles_definitions:
-                cat = a['category']
-                li = a['list']
-                li2 = f" {a['list2']}" if a['list2'] is not None else ""
-                li3 = f" {a['list3']}" if a['list3'] is not None else ""
-                li4 = f" {a['list4']}" if a['list4'] is not None else ""
-                f.write(f"{cat} – {li}{li2}{li3}{li4}: ")
-                f.write(f"{a['definition']}; ")
-                # f.write(f"{a['usage']}")
-                if a['examples'] is not None:
-                    f.write(f"{a['examples']}")
-                f.write("\n")
+            # create_article_text(value, f)
+    print(f"Corpus saved to {save_path}")
+
+
+def create_article_text(value: dict, f) -> None:
+    article = value["article"]
+    articles_definitions = article["definitions"]
+    f.write("\n\nEs folgen die aus den Belegen abgeleiteten Bedeutungen:\n")
+    f.write(f"##Lemma: {article['lemma']}\n")
+    f.write(f"###Wortart: {article['pos']} ")
+    f.write(f"{article['gender']}\n")
+    if article['variants'] is not None:
+        f.write(f"###Wortvariationen: {article['variants']}\n")
+    for a in articles_definitions:
+        cat = a['category']
+        li = a['list']
+        li2 = f" {a['list2']}" if a['list2'] is not None else ""
+        li3 = f" {a['list3']}" if a['list3'] is not None else ""
+        li4 = f" {a['list4']}" if a['list4'] is not None else ""
+        f.write(f"{cat} – {li}{li2}{li3}{li4}: ")
+        f.write(f"{a['definition']}; ")
+        # f.write(f"{a['usage']}")
+        if a['examples'] is not None:
+            f.write(f"{a['examples']}")
+        f.write("\n")

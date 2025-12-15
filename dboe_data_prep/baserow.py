@@ -15,7 +15,8 @@ try:
         BASEROW_USER, BASEROW_PW, BASEROW_TOKEN, br_base_url=BASEROW_URL
     )
 except KeyError:
-    print("Please provide BASEROW_USER, BASEROW_PW, BASEROW_TOKEN in your environment.")
+    print("Please provide BASEROW_USER, BASEROW_PW,\
+        BASEROW_TOKEN in your environment.")
     br_client = None
 
 os.makedirs("json_dumps", exist_ok=True)
