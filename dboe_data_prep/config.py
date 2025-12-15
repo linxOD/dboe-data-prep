@@ -10,7 +10,7 @@ _NSMAP = {
 }
 ####################################################################
 # configure sleep time as int for api requests and dict while loop
-_SLEEP_TIME_API = 0.1
+_SLEEP_TIME_API = 0.5
 _SLEEP_TIME_DICT = 0.01
 ####################################################################
 # configure expiry time for files in days as int

@@ -27,7 +27,7 @@ LIST_CATEGORIES = {
 }
 
 # Einleitung
-INTRODUCTION = "Glossar:"
+INTRODUCTION = "Glossar"
 
 # the glossar is used to create the corpus and translate the column keys
 with open("json_dumps/Bedeutung.json", "r", encoding="utf-8") as f:
@@ -156,7 +156,7 @@ def create_corpus_from_documents(input: dict) -> list:
             else:
                 raise ValueError("Value type not supported.")
             if title is not None and content is not None:
-                text_structure.append(f", {title}: {content.strip()}")
+                text_structure.append(f"\n\t* {title}: {content.strip()}")
     elif isinstance(input, list):
         title: str = GLOSSAR_NAME["tags"]
         content: list = list()
@@ -407,20 +407,22 @@ def create_text_corpus_as_txt(corpus: dict, save_path: str) -> None:
         documents = value["documents"]
         form = value["form"]
         with open(save_path, "w") as f:
-            f.write(INTRODUCTION + "\n")
+            f.write(f"# {INTRODUCTION}\n")
             for k, v in GLOSSAR_NAME.items():
-                f.write(f"{v}: {GLOSSAR_DESCRIPTION[k]}\n")
-            f.write("Auflistung von relevanten Fragebogennummern und\
+                if k == "Großregion2":
+                    continue
+                f.write(f"## {v}\n{GLOSSAR_DESCRIPTION[k]}\n")
+            f.write("## Auflistung von relevanten Fragebogennummern und \
 Beschreibungen:\n")
             for k, v in form.items():
-                f.write(f"{k}: {" ".join(v)}\n")
-            f.write("Es folgt eine Sammlung von Belegen:\n")
-            f.write(f"Das Lemma der Sammlung lautet: {title}\n")
-            f.write(f"Anzahl Belege: {value['doc_count']}\n")
+                f.write(f"* **{k}:** {" ".join(v)}\n")
+            f.write("# Kontextinformationen der Sammlung:\n")
+            f.write(f"* Lemmata: {title}\n")
+            f.write(f"* Beleganzahl: {value['doc_count']}\n")
+            f.write("## Belege der Sammlung:\n")
             count = 1
             for doc in documents:
-                f.write(f"Beleg ID: {doc["id"]}")
-                f.write(f"{doc['content']};\n")
+                f.write(f"* Beleg ID: {doc['id']}{doc['content']};\n")
                 # f.write(f"{doc['tags']}\n")
                 count += 1
             # create_article_text(value, f)

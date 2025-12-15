@@ -139,7 +139,14 @@ def collection_data_to_simplified_dict(data: dict, tags: dict,
                                        "LT1_theutonista",
                                        "ANM",
                                        "DIV",
-                                       "Großregion1"])
+                                       "Großregion1",
+                                       "Großregion2",
+                                       "Kleinregion1",
+                                       "Kleinregion2",
+                                       "Gemeinde1",
+                                       "Gemeinde2",
+                                       "Sigle1",
+                                       "Sigle2"])
         normalized_data, form = normalize_strings(dict_values)
         simplified_dict["source"] = normalized_data
         simplified_data["form"].update(form)

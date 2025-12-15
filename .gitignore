@@ -2,6 +2,6 @@
 *.json
 *.txt
 /meta
-/output
+/output*
 /__pycache__/*
 *.pyc

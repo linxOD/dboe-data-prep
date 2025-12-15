@@ -91,8 +91,8 @@ if __name__ == "__main__":
         sorted_tags = dd.load_json(tag_glob)
     for article in tqdm(articles, total=len(articles)):
         # dd = DBOEData(title=col_title, url=url)
-        col_id = f"{article["col_verbr"]}"
-        # col_id = article["col_simplex"]
+        # col_id = f"{article["col_verbr"]}"
+        col_id = article["col_simplex"]
         print(f"Processing collection: {col_id}")
         article_name = article["article"]
         dd.url = url
@@ -135,18 +135,18 @@ if __name__ == "__main__":
             doc_tags = dd.load_json(doc_glob)
             title = data_simplified_glob.split("/")[1].split("__")
             title = title[0] + "__" + title[1]
-            # simplified_data = collection_data_to_simplified_dict(doc_data,
-            #                                                      doc_tags,
-            #                                                      title,
-            #                                                      save=True)
-            simplified_data = dd.load_json(data_simplified_glob)
-            corpus = dd.load_json(data_corpus_glob)
-            # corpus = create_collection_corpus(simplified_data, article_name,
-            #                                     title=title, save=True)
+            simplified_data = collection_data_to_simplified_dict(doc_data,
+                                                                 doc_tags,
+                                                                 title,
+                                                                 save=True)
+            # simplified_data = dd.load_json(data_simplified_glob)
+            # corpus = dd.load_json(data_corpus_glob)
+            corpus = create_collection_corpus(simplified_data, article_name,
+                                              title=title, save=True)
             # with open(data_corpus_glob, 'w') as f:
             #     json.dump(corpus, f, ensure_ascii=False)
             os.makedirs(os.path.join(INPUT_PATH, "llm_corpus"), exist_ok=True)
             data_text_glob = os.path.join(
-                INPUT_PATH, "llm_corpus", f"{title}.txt")
+                INPUT_PATH, "llm_corpus", f"{title}.md")
             create_text_corpus_as_txt(corpus, save_path=data_text_glob)
         print("ended")
