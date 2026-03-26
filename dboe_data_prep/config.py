@@ -2,7 +2,7 @@
 # configure the output directory path as str
 _OUTPUT_PATH = "output"
 # configure the path to the articles as str
-_ARTICLES_PATH = "home/daniel/Projects/Gitlab/wboe-artikel/102_derived_tei/Artikel_Redaktionstool"
+_ARTICLES_PATH = "home/daniel/Projects/gitlab/wboe-artikel/102_derived_tei/Artikel_Redaktionstool"
 # configure XML Namespace as dict
 _NSMAP = {
     "tei": "http://www.tei-c.org/ns/1.0",
@@ -14,7 +14,7 @@ _SLEEP_TIME_API = 0.5
 _SLEEP_TIME_DICT = 0.01
 ####################################################################
 # configure expiry time for files in days as int
-_EXPIRY_TIME = 730
+_EXPIRY_TIME = 1000
 ####################################################################
 # save urls and collection titles under the following variable names
 # as enviroment varialbes

@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "acdh-baserow-pyutils>=0.10",
+    "cleantext>=1.1.4",
     "langchain>=0.3.25",
     "lxml>=5.3.1",
     "pandas>=2.2.3",

@@ -1,5 +1,6 @@
 import os
 import json
+from cleantext import clean
 from lxml import etree as ET
 from utils import DBOEUtils
 from config import _ARTICLES_PATH, _NSMAP, _OUTPUT_PATH
@@ -17,13 +18,16 @@ SENSE_CATEGORIES = {
     "5": "weitere Bedeutung 4",
     "6": "weitere Bedeutung 5",
     "7": "weitere Bedeutung 6",
+    "8": "weitere Bedeutung 7",
+    "9": "weitere Bedeutung 8",
+    "10": "weitere Bedeutung 9",
 }
 # each category has a different list of subcategories
 LIST_CATEGORIES = {
-    "0": ["I.", "II.", "III.", "IV.", "V.", "VI.", "VII.", "VIII.", "IX."],
-    "1": ["1.", "2.", "3.", "4.", "5.", "6.", "7.", "8.", "9."],
-    "2": ["a.", "b.", "c.", "d.", "e.", "f.", "g.", "h.", "i."],
-    "3": ["α.", "β.", "γ.", "δ.", "ε.", "ζ.", "η.", "θ.", "ι."],
+    "0": ["I.", "II.", "III.", "IV.", "V.", "VI.", "VII.", "VIII.", "IX.", "X."],
+    "1": ["1.", "2.", "3.", "4.", "5.", "6.", "7.", "8.", "9.", "10."],
+    "2": ["a.", "b.", "c.", "d.", "e.", "f.", "g.", "h.", "i.", "j."],
+    "3": ["α.", "β.", "γ.", "δ.", "ε.", "ζ.", "η.", "θ.", "ι.", "κ."],
 }
 
 # Einleitung
@@ -156,7 +160,7 @@ def create_corpus_from_documents(input: dict) -> list:
             else:
                 raise ValueError("Value type not supported.")
             if title is not None and content is not None:
-                text_structure.append(f"\n\t* {title}: {content.strip()}")
+                text_structure.append(f"\n* {title}: {content.strip()}")
     elif isinstance(input, list):
         title: str = GLOSSAR_NAME["tags"]
         content: list = list()
@@ -168,7 +172,7 @@ def create_corpus_from_documents(input: dict) -> list:
             else:
                 content.append(" ".join(item.split("_")))
         if len(content) > 0:
-            text_structure.append(f"{title}\n{"\n".join(content)}")
+            text_structure.append(f"\n* {title}\n{"\n".join(content)}")
     elif isinstance(input, str):
         return input
     else:
@@ -176,13 +180,12 @@ def create_corpus_from_documents(input: dict) -> list:
     return text_structure
 
 
-def load_article(article_name: str) -> list:
+def load_article(article_name: str, struct: bool = False) -> list:
     """_summary_
 
     Returns:
         list: _description_
     """
-    article: list = list()
     path = _ARTICLES_PATH.split("/")
     path_glob = os.path.join("/", *path, f"{article_name}.xml")
     tree = ET.parse(path_glob)
@@ -213,7 +216,14 @@ def load_article(article_name: str) -> list:
         variant_subtype = " ".join(variant_subtype)
         variant_gender = " ".join(variant_gender)
         variant_forms = ', '.join(variant_forms)
-        variants = f"{variant_forms} ({variant_subtype}, {variant_gender})"
+        if struct:
+            variants = {
+                "form": variant_forms,
+                "typ": variant_subtype,
+                "genus": variant_gender.strip()
+            }
+        else:
+            variants = f"{variant_forms} ({variant_subtype}, {variant_gender})"
     else:
         variants = None
     pos = root.xpath(
@@ -224,20 +234,154 @@ def load_article(article_name: str) -> list:
         ".//tei:body/tei:entry/tei:gramGrp/tei:gram[@type='gender']/text()",
         namespaces=_NSMAP)
     if len(gender) != 0:
-        gender = f"({' '.join(gender)})"
+        if len(gender) > 1:
+            separator = ", "
+        else:
+            separator = " "
+        gender = f"{separator.join(gender)}".strip()
     else:
         gender = None
     sense = root.xpath(".//tei:body/tei:entry/tei:sense/tei:sense",
                        namespaces=_NSMAP)
-    article_definitions = create_article_definitions(sense, article)
-    article = {
+    if struct:
+        article_definitions = create_article_definitions_struct(sense, list())
+    else:
+        article_definitions = create_article_definitions(sense, list())
+    return {
         "lemma": form,
         "pos": pos,
-        "gender": gender,
-        "variants": variants,
-        "definitions": article_definitions
+        "genus": gender,
+        "kasus": variants,
+        "bedeutungen": article_definitions
     }
-    return article
+
+
+def create_article_definitions_struct(elements: list, meanings: list,
+                                      sub: int = 0) -> list:
+
+    for idx, element in enumerate(elements):
+        ########################################################
+        # test if sub elements exist and create recursive loop #
+        ########################################################
+        sub_elements = element.xpath("./tei:sense",
+                                     namespaces=_NSMAP)
+        sub_length = len(sub_elements)
+        if sub_length == 0:
+            ############################################################
+            # if no sub elements exist, create article corpus directly #
+            ############################################################
+            # s_cat = SENSE_CATEGORIES[str(index)]
+
+            parent = element.getparent()
+            ancestor = parent.getparent()
+            parent_ancestor = ancestor.getparent()
+            ancestor_parent_ancestor = parent_ancestor.getparent()
+
+            parent_idx = ancestor.index(parent)
+            ancestor_idx = parent_ancestor.index(ancestor)
+            ancestor_parent_ancestor_idx = ancestor_parent_ancestor.index(parent_ancestor)
+
+            if sub == 0:
+                s_cat = SENSE_CATEGORIES[str(idx)]
+                s_den = LIST_CATEGORIES[str(sub)][idx]
+                nummerierung = s_den
+            if sub == 1:
+                s_cat = SENSE_CATEGORIES[str(parent_idx)]
+                s_den = LIST_CATEGORIES[str(sub - 1)][parent_idx]
+                s_den2 = LIST_CATEGORIES[str(sub)][idx]
+                nummerierung = f"{s_den}{s_den2}"
+            if sub == 2:
+                s_cat = SENSE_CATEGORIES[str(ancestor_idx)]
+                s_den = LIST_CATEGORIES[str(sub - 2)][ancestor_idx]
+                s_den2 = LIST_CATEGORIES[str(sub - 1)][parent_idx]
+                s_den3 = LIST_CATEGORIES[str(sub)][idx]
+                nummerierung = f"{s_den}{s_den2}{s_den3}"
+            if sub == 3:
+                s_cat = SENSE_CATEGORIES[str(ancestor_parent_ancestor_idx)]
+                s_den = LIST_CATEGORIES[str(sub - 3)][ancestor_parent_ancestor_idx]
+                s_den2 = LIST_CATEGORIES[str(sub - 2)][ancestor_idx]
+                s_den3 = LIST_CATEGORIES[str(sub - 1)][parent_idx]
+                s_den4 = LIST_CATEGORIES[str(sub)][idx]
+                nummerierung = f"{s_den}{s_den2}{s_den3}{s_den4}"
+
+            ##########################################################
+            # there should be at least one tei:def element or break #
+            ##########################################################
+            try:
+                defi = element.xpath("./tei:def", namespaces=_NSMAP)[0]
+                defi = defi.text.strip()
+            except IndexError:
+                continue
+            try:
+                defi2 = element.xpath("./tei:def[@type='umschreibung']",
+                                      namespaces=_NSMAP)[0]
+                defi2 = defi2.text.strip()
+            except IndexError:
+                defi2 = ""
+            if defi2 != "" and defi != "":
+                if defi2 != defi:
+                    definition = f"{defi}; {defi2}"
+                else:
+                    definition = defi
+            elif defi2 != "" and defi == "":
+                definition = defi2
+            elif defi2 == "" and defi != "":
+                definition = defi
+            else:
+                definition = f"{defi}{'; ' + defi2 if defi2 != '' else ''}"
+            #####################################################
+            # examples or Belegsätze that also have place names #
+            #####################################################
+            try:
+                examples = element.xpath(
+                    "./tei:cit[@type='example']/tei:quote",
+                    namespaces=_NSMAP)
+                places = element.xpath(
+                    """./tei:cit[@type='example']/tei:usg/tei:placeName""",
+                    namespaces=_NSMAP)
+                examples[0]
+                example_list = list()
+                for idx, e in enumerate(examples):
+                    elem = [el.strip() for el in e.xpath(".//text()") if el.strip() != '']
+                    place = [p.strip() for p in places[idx].xpath(".//text()") if p.strip() != '']\
+                        if idx < len(places) else []
+                    elem = " ".join(elem).strip()
+                    place = " ".join(place).strip()
+                    example_list.append({
+                        "beispielsatz": elem,
+                        "herkunftsort": place
+                    })
+            except IndexError:
+                example_list = None
+            ########################################
+            # Definitions have place names as well #
+            ########################################
+            usage = element.xpath("./tei:usg/tei:placeName",
+                                  namespaces=_NSMAP)
+            usage_list = list()
+            for u in usage:
+                u_type = u.get("type")
+                u_ref = u.get("ref").split("#")[1]
+                u_text = u.text
+                usage_list.append({
+                    "typ": u_type,
+                    "sigle": u_ref,
+                    "name": u_text
+                })
+            #########################################
+            # create dict for each definition found #
+            #########################################
+            meanings.append({
+                "bedeutungskategorie": s_cat,
+                "bedeutungsebene": nummerierung,
+                "bedeutung": definition.strip(),
+                "regionen": usage_list,
+                "beispiele": example_list,
+            })
+        else:
+            meanings = create_article_definitions_struct(sub_elements, meanings, sub + 1)
+
+    return meanings
 
 
 def create_article_definitions(elements: list, article: list,
@@ -297,9 +441,11 @@ def create_article_definitions(elements: list, article: list,
                 ex = []
                 for e in examples:
                     if e.tag == "{http://www.tei-c.org/ns/1.0}quote":
-                        ex.append(f"– {" ".join(e.xpath(".//text()"))}")
+                        quote = [q.strip() for q in e.xpath(".//text()") if q.strip() != '']
+                        ex.append(f"– {" = ".join(quote)}".strip())
                     elif e.tag == "{http://www.tei-c.org/ns/1.0}placeName":
-                        ex.append(f"({" ".join(e.xpath(".//text()"))})")
+                        place = [p.strip() for p in e.xpath(".//text()") if p.strip() != '']
+                        ex.append(f"({' '.join(place)})".strip())
                 examples = " ".join(ex)
             except IndexError:
                 examples = None
@@ -319,14 +465,14 @@ def create_article_definitions(elements: list, article: list,
             # create dict for each definition found #
             #########################################
             article.append({
-                    "category": s_cat,
-                    "list": s_den,
-                    "list2": s_den2 if sub >= 1 else None,
-                    "list3": s_den3 if sub >= 2 else None,
-                    "list4": s_den4 if sub >= 3 else None,
-                    "definition": f"{defi}{defi2}",
-                    "usage": usg_str,
-                    "examples": examples})
+                "category": s_cat,
+                "list": s_den,
+                "list2": s_den2 if sub >= 1 else None,
+                "list3": s_den3 if sub >= 2 else None,
+                "list4": s_den4 if sub >= 3 else None,
+                "definition": f"{defi}{defi2}",
+                "usage": usg_str,
+                "examples": examples})
         else:
             ####################################
             # find more definitions recursivly #
@@ -419,34 +565,102 @@ Beschreibungen:\n")
             f.write("# Kontextinformationen der Sammlung:\n")
             f.write(f"* Lemmata: {title}\n")
             f.write(f"* Beleganzahl: {value['doc_count']}\n")
-            f.write("## Belege der Sammlung:\n")
             count = 1
             for doc in documents:
-                f.write(f"* Beleg ID: {doc['id']}{doc['content']};\n")
+                f.write(f"## Beleg ID: {doc['id']}{doc['content']};\n")
                 # f.write(f"{doc['tags']}\n")
                 count += 1
             # create_article_text(value, f)
     print(f"Corpus saved to {save_path}")
 
 
+def create_article_struct(value: dict) -> dict:
+    article_struct = dict()
+    article = value["article"]
+    articles_definitions = article["definitions"]
+    article_struct["lemma"] = article["lemma"]
+    article_struct["pos"] = article["pos"]
+    article_struct["genus"] = article["gender"]
+    article_struct["kasus"] = article["variants"]
+    article_struct["bedeutungen"] = list()
+    unterbedeutungen = list()
+    varianten = list()
+    viarianten2 = list()
+
+    for a in articles_definitions:
+        bedeutung = dict()
+        unterbedeutung = dict()
+        variante = dict()
+        variante2 = dict()
+        l1 = a['list']
+        l2 = a['list2']
+        l3 = a['list3']
+        l4 = a['list4']
+        def1 = a['definition']
+        def2 = a['definition2']
+        examples = a['examples']
+        usage = a['usage']
+        cat = a['category']
+        bedeutung["category"] = cat
+        bedeutung["nummerierung"] = l1
+        if l2:
+            unterbedeutung["nummerierung"] = l2
+        if l3:
+            variante["nummerierung"] = l3
+        if l4:
+            variante2["nummerierung"] = l4
+        if l2 is None and l3 is None and l4 is None:
+            bedeutung["hauptbedeutung"] = def1
+            bedeutung["hauptbedeutung2"] = def2
+            bedeutung["beispielsatz"] = examples
+            bedeutung["grossregion"] = usage
+        if l2 is not None and l3 is None and l4 is None:
+            unterbedeutung["unterbedeutung"] = def1
+            unterbedeutung["unterbedeutung2"] = def2
+            unterbedeutung["nummerierung"] = l2
+            unterbedeutung["beispielsatz"] = examples
+            unterbedeutung["grossregion"] = usage
+            unterbedeutungen.append(unterbedeutung)
+        if l3 is not None and l4 is None:
+            variante["variante"] = def1
+            variante["variante2"] = def2
+            variante["nummerierung"] = l3
+            variante["beispielsatz"] = examples
+            variante["grossregion"] = usage
+            varianten.append(variante)
+        if l4 is not None:
+            variante2["variante"] = def1
+            variante2["variante2"] = def2
+            variante2["nummerierung"] = l4
+            variante2["beispielsatz"] = examples
+            variante2["grossregion"] = usage
+            viarianten2.append(variante2)
+        
+        article_struct["bedeutungen"].append(bedeutung)
+    return article_struct
+
+
 def create_article_text(value: dict, f) -> None:
     article = value["article"]
     articles_definitions = article["definitions"]
-    f.write("\n\nEs folgen die aus den Belegen abgeleiteten Bedeutungen:\n")
-    f.write(f"##Lemma: {article['lemma']}\n")
-    f.write(f"###Wortart: {article['pos']} ")
-    f.write(f"{article['gender']}\n")
     if article['variants'] is not None:
-        f.write(f"###Wortvariationen: {article['variants']}\n")
+        f.write(f"## Wortvariationen: {article['variants']}\n")
+    f.write(f"# Lemma: {article['lemma']}\n")
+    f.write(f"## Wortart: {article['pos']} ")
+    f.write(f"{article['gender']}\n")
+
     for a in articles_definitions:
-        cat = a['category']
+        # cat = a['category']
         li = a['list']
         li2 = f" {a['list2']}" if a['list2'] is not None else ""
         li3 = f" {a['list3']}" if a['list3'] is not None else ""
         li4 = f" {a['list4']}" if a['list4'] is not None else ""
-        f.write(f"{cat} – {li}{li2}{li3}{li4}: ")
+        f.write(f"{li}{li2}{li3}{li4}: ")
         f.write(f"{a['definition']}; ")
         # f.write(f"{a['usage']}")
         if a['examples'] is not None:
-            f.write(f"{a['examples']}")
-        f.write("\n")
+            examples = a['examples'].split("–")
+            examples = [clean(e.strip().replace("\n", ""), extra_spaces=True) for e in examples if e.strip() != '']
+            examples = clean(" – ".join(examples), extra_spaces=True)
+            f.write(examples)
+            f.write("\n")
