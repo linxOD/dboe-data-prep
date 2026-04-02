@@ -1,0 +1,18 @@
+{
+    "name": "DynAT KI-Data-Prep",
+    "image": "ghcr.io/acdh-oeaw/devcontainer-frontend:24",
+    // Add additional features for ANT, Python and UV...
+    // "features": {
+    //     "ghcr.io/devcontainers/features/python:1": {},
+    //     "ghcr.io/jsburckhardt/devcontainer-features/uv:1": {}
+    // },
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                // vs code extensions, which should be pre-installed.
+            ]
+        }
+    },
+    // Use 'forwardPorts' to make a list of ports inside the container available locally.
+	"forwardPorts": [8000]
+}

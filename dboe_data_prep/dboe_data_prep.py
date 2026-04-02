@@ -2,6 +2,7 @@ import os
 import json
 from pydantic import BaseModel
 from tqdm import tqdm
+import yaml
 
 from utils import DBOEUtils
 from col import get_collection, get_collection_detail
@@ -11,7 +12,7 @@ from doc import (get_documents, get_documents_id, get_document_data,
 from text import collection_data_to_simplified_dict
 from config import _API_VAR_MD, _API_VAR_DATA, \
     _EXPIRY_TIME, _OUTPUT_PATH
-from verbalizer import create_collection_corpus, create_text_corpus_as_txt
+from verbalizer import create_collection_corpus, create_text_corpus_as_txt, create_toon_corpus_from_documents
 
 
 INPUT_PATH = _OUTPUT_PATH
@@ -141,13 +142,16 @@ if __name__ == "__main__":
                                                                  title,
                                                                  save=True)
             # simplified_data = dd.load_json(data_simplified_glob)
-            # corpus = dd.load_json(data_corpus_glob)
-            corpus = create_collection_corpus(simplified_data, article_name,
-                                              title=title, save=True)
+            # # corpus = dd.load_json(data_corpus_glob)
+            # corpus = create_collection_corpus(simplified_data, article_name,
+            #                                   title=title, save=True)
             # with open(data_corpus_glob, 'w') as f:
             #     json.dump(corpus, f, ensure_ascii=False)
+            title, toon = create_toon_corpus_from_documents(simplified_data)
             os.makedirs(os.path.join(INPUT_PATH, "llm_corpus"), exist_ok=True)
             data_text_glob = os.path.join(
-                INPUT_PATH, "llm_corpus", f"{title}.md")
-            create_text_corpus_as_txt(corpus, save_path=data_text_glob)
+                INPUT_PATH, "llm_corpus", f"{title}.json")
+            with open(data_text_glob, 'w', encoding='utf-8') as f:
+                json.dump(toon, f, ensure_ascii=False)
+            # create_text_corpus_as_txt(corpus, save_path=data_text_glob)
         print("ended")

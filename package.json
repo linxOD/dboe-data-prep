@@ -1,0 +1,25 @@
+{
+  "name": "dboe-data-prep",
+  "version": "1.0.0",
+  "description": "",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "validate": "node ./node_modules/typescript/bin/tsc --noEmit",
+    "build": "node ./node_modules/typescript/bin/tsc",
+    "start": "node dist/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.33.0",
+  "dependencies": {
+    "@toon-format/toon": "^2.1.0",
+    "tsc": "^2.0.4",
+    "typescript": "^6.0.2"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0"
+  }
+}

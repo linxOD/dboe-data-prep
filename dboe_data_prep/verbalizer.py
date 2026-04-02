@@ -97,6 +97,103 @@ for _, v in BEDEUTUNG.items():
 # }
 
 
+def create_glossar_struct_from_data(input: dict) -> dict:
+    context = {
+        "context": dict(),
+        "documents": list()
+    }
+    for _, value in input.items():
+        name = value["Name"].strip()
+        beschreibung = value["Beschreibung"].strip()
+        if name is not None and beschreibung is not None:
+            context["context"][name] = beschreibung
+    return context
+
+
+def create_toon_corpus_from_documents(input: dict) -> list:
+    """_summary_
+
+    Args:
+        input (dict): _description_
+
+    Returns:
+        dict: _description_
+    """
+    with open("json_dumps/Bedeutung.json", "r", encoding="utf-8") as f:
+        bedeutung = json.load(f)
+    context = create_glossar_struct_from_data(bedeutung)
+
+    title: str = input["title"]
+    documents: list = input["documents"]
+    for doc in documents:
+        toon_corpus = {
+            "id": "",
+            "name": "Beleg",
+            "lemma": "",
+            "pos": "",
+            "bedeutung": "",
+            "lautung": "",
+            "belegsatz": "",
+            "regionen": "",
+            "tags": "",
+        }
+        toon_corpus["id"] = doc["id"]
+        toon_corpus["tags"] = "; ".join(doc["tags"])
+        for key, value in doc["source"].items():
+            if isinstance(value, str) and value.strip() != "":
+                if key == "HL":
+                    toon_corpus["lemma"] = value.strip()
+                if key == "POS":
+                    toon_corpus["pos"] = value.strip()
+                if key == "BD/KT*":
+                    toon_corpus["bedeutung"] = value.strip()
+                if key == "KT1" or key == "KT2":
+                    if toon_corpus["belegsatz"].strip() != "":
+                        toon_corpus["belegsatz"] += f"; {value.strip()}"
+                    else:
+                        toon_corpus["belegsatz"] = value.strip()
+            elif isinstance(value, list):
+                regionen = ["Großregion1", "Großregion2", "Kleinregion1", "Kleinregion2", "Gemeinde1", "Gemeinde2"]
+                sub_list_lautung = []
+                sub_list_bedeutung = []
+                sub_list_regionen = []
+                sub_list_belegesatz = []
+                sub_list_hl = []
+                for item in value:
+                    if isinstance(item, str) and item.strip() != "":
+                        if key in regionen:
+                            sub_list_regionen.append(item.strip())
+                        if key == "BD/KT*":
+                            sub_list_bedeutung.append(item.strip())
+                        if key == "BD/LT*":
+                            sub_list_lautung.append(item.strip())
+                        if key == "KT1" or key == "KT2":
+                            sub_list_belegesatz.append(item.strip())
+                        if key == "HL":
+                            toon_corpus["lemma"] = item.strip()
+                    elif isinstance(item, dict):
+                        if key == "BD/KT*":
+                            for k, v in item.items():
+                                if isinstance(v, str) and v.strip() != "":
+                                    sub_list_bedeutung.append(f"{'Dialekt: ' if k == 'orig' else 'Hochdeutsch: '}{v.strip()}")
+                        if key == "BD/LT*":
+                            for k, v in item.items():
+                                if isinstance(v, str) and v.strip() != "":
+                                    sub_list_lautung.append(f"{'Dialekt: ' if k == 'orig' else 'Hochdeutsch: '}{v.strip()}")
+                if len(sub_list_bedeutung) > 0:
+                    toon_corpus["bedeutung"] = "; ".join(sub_list_bedeutung)
+                if len(sub_list_lautung) > 0:
+                    toon_corpus["lautung"] = "; ".join(sub_list_lautung)
+                if len(sub_list_regionen) > 0:
+                    toon_corpus["regionen"] = "; ".join(sub_list_regionen)
+                if len(sub_list_belegesatz) > 0:
+                    toon_corpus["belegsatz"] = "; ".join(sub_list_belegesatz)
+            else:
+                continue
+        context["documents"].append(toon_corpus.copy())
+    return title, context
+
+
 def create_corpus_from_documents(input: dict) -> list:
     """_summary_
 
@@ -251,7 +348,7 @@ def load_article(article_name: str, struct: bool = False) -> list:
         "lemma": form,
         "pos": pos,
         "genus": gender,
-        "kasus": variants,
+        "form": variants,
         "bedeutungen": article_definitions
     }
 
@@ -563,14 +660,17 @@ Beschreibungen:\n")
             for k, v in form.items():
                 f.write(f"* **{k}:** {" ".join(v)}\n")
             f.write("# Kontextinformationen der Sammlung:\n")
-            f.write(f"* Lemmata: {title}\n")
-            f.write(f"* Beleganzahl: {value['doc_count']}\n")
+            f.write("```\n")
+            f.write("context:\n")
+            f.write(f"\tlemma: {title}\n")
+            f.write(f"\tbelege[{value['doc_count']}")
             count = 1
             for doc in documents:
-                f.write(f"## Beleg ID: {doc['id']}{doc['content']};\n")
+                f.write(f"{{beleg_id,}}{doc['id']}{doc['content']};\n")
                 # f.write(f"{doc['tags']}\n")
                 count += 1
             # create_article_text(value, f)
+            f.write("\n```\n")
     print(f"Corpus saved to {save_path}")
 
 
@@ -581,7 +681,7 @@ def create_article_struct(value: dict) -> dict:
     article_struct["lemma"] = article["lemma"]
     article_struct["pos"] = article["pos"]
     article_struct["genus"] = article["gender"]
-    article_struct["kasus"] = article["variants"]
+    article_struct["form"] = article["variants"]
     article_struct["bedeutungen"] = list()
     unterbedeutungen = list()
     varianten = list()
@@ -635,7 +735,7 @@ def create_article_struct(value: dict) -> dict:
             variante2["beispielsatz"] = examples
             variante2["grossregion"] = usage
             viarianten2.append(variante2)
-        
+
         article_struct["bedeutungen"].append(bedeutung)
     return article_struct
 

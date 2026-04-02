@@ -1,7 +1,10 @@
 .secret
-*.json
 *.txt
 /meta
 /output*
 /__pycache__/*
 *.pyc
+/node_modules
+/.pnpm-store
+/json_dumps
+/dist
