@@ -1,8 +1,9 @@
-.secret
+.secret*
 *.txt
 /meta
 /output*
-/__pycache__/*
+__pycache__/*
+
 *.pyc
 /node_modules
 /.pnpm-store

@@ -204,5 +204,6 @@ class DBOEUtils:
         """
         glob_str = glob.glob(os.path.join(input_path,
                                           f"{dir}__*", f"{file}.json"))[0]
-        date_str = glob_str.split('/')[-2].split("__")[2]
+        # get date from directory name
+        date_str = os.path.dirname(glob_str).split("__")[-1]
         return date_str, glob_str

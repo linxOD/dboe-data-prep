@@ -2,7 +2,7 @@ import os
 import json
 from pydantic import BaseModel
 from tqdm import tqdm
-import yaml
+# from toon_format import encode, decode
 
 from utils import DBOEUtils
 from col import get_collection, get_collection_detail
@@ -135,7 +135,8 @@ if __name__ == "__main__":
                 continue
             doc_data = dd.load_json(data_glob)
             doc_tags = dd.load_json(doc_glob)
-            title = data_simplified_glob.split("/")[1].split("__")
+            title = os.path.dirname(data_simplified_glob).split("/")[-1].split("__")
+            print(f"Processing collection: {title}")
             title = title[0] + "__" + title[1]
             simplified_data = collection_data_to_simplified_dict(doc_data,
                                                                  doc_tags,
@@ -147,11 +148,17 @@ if __name__ == "__main__":
             #                                   title=title, save=True)
             # with open(data_corpus_glob, 'w') as f:
             #     json.dump(corpus, f, ensure_ascii=False)
-            title, toon = create_toon_corpus_from_documents(simplified_data)
+            title, corpus = create_toon_corpus_from_documents(simplified_data)
+
             os.makedirs(os.path.join(INPUT_PATH, "llm_corpus"), exist_ok=True)
             data_text_glob = os.path.join(
                 INPUT_PATH, "llm_corpus", f"{title}.json")
+
             with open(data_text_glob, 'w', encoding='utf-8') as f:
-                json.dump(toon, f, ensure_ascii=False)
+                json.dump(corpus, f, ensure_ascii=False)
+
+            # toon = encode(corpus)
+            # with open(data_text_glob.replace(".json", ".toon"), 'w', encoding='utf-8') as f:
+            #     f.write(toon)
             # create_text_corpus_as_txt(corpus, save_path=data_text_glob)
         print("ended")

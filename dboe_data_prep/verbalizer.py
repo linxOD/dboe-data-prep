@@ -4,6 +4,38 @@ from cleantext import clean
 from lxml import etree as ET
 from utils import DBOEUtils
 from config import _ARTICLES_PATH, _NSMAP, _OUTPUT_PATH
+from pydantic import BaseModel
+
+
+class Artikel(BaseModel):
+    """_summary_
+
+    Args:
+        BaseModel (_type_): _description_
+        """
+    id: str | None
+    name: str | None
+    fragebogennummer: str | None
+    hauptlemma: str | None
+    nebenlemma: str | None
+    pos: str | None
+    bedeutung_des_belegsatzes: str | None
+    bedeutung_der_lautung: str | None
+    belegsatz: str | None
+    belegsatz2: str | None
+    lautung: str | None
+    lautung2: str | None
+    sigle: str | None
+    sigle2: str | None
+    regionen: str | None
+    diverses: str | None
+    anmerkung: str | None
+
+
+class LLMCorpus(BaseModel):
+    context: dict
+    documents: list[Artikel] | None
+
 
 utils = DBOEUtils()
 OUTPUT_PATH = _OUTPUT_PATH
@@ -97,20 +129,40 @@ for _, v in BEDEUTUNG.items():
 # }
 
 
+def normalize_gloassar_name(name: str) -> str:
+    """_summary_
+
+    Args:
+        name (str): _description_
+
+    Returns:
+        str: _description_
+    """
+    to_normalize = {
+        "ä": "ae",
+        "ö": "oe",
+        "ü": "ue",
+        "ß": "ss",
+    }
+    for k, v in to_normalize.items():
+        name = name.replace(k, v).replace(" ", "_")
+    return name
+
+
 def create_glossar_struct_from_data(input: dict) -> dict:
     context = {
         "context": dict(),
         "documents": list()
     }
     for _, value in input.items():
-        name = value["Name"].strip()
+        name = normalize_gloassar_name(value["Name"].strip())
         beschreibung = value["Beschreibung"].strip()
         if name is not None and beschreibung is not None:
             context["context"][name] = beschreibung
     return context
 
 
-def create_toon_corpus_from_documents(input: dict) -> list:
+def create_toon_corpus_from_documents(input: dict) -> tuple[str, LLMCorpus]:
     """_summary_
 
     Args:
@@ -119,79 +171,95 @@ def create_toon_corpus_from_documents(input: dict) -> list:
     Returns:
         dict: _description_
     """
+    
+    # mapping of simplified keys to article keys
+    map_simpliefied_to_article = {
+        "NR": "fragebogennummer",
+        "HL": "hauptlemma",
+        "NL": "nebenlemma",
+        "POS": "pos",
+        "BD/KT*": "bedeutung_des_belegsatzes",
+        "BD/LT*": "bedeutung_der_lautung",
+        "KT1": "belegsatz",
+        "KT2": "belegsatz2",
+        "LT1_theutonista": "lautung",
+        "LT2_theutonista": "lautung2",
+        "Sigle1": "sigle",
+        "Sigle2": "sigle2",
+        "Großregion1": "regionen",
+        "Großregion2": "regionen",
+        "Kleinregion1": "regionen",
+        "Kleinregion2": "regionen",
+        "Gemeinde1": "regionen",
+        "Gemeinde2": "regionen",
+        "DIV": "diverses",
+        "ANM": "anmerkung"
+    }
+    
     with open("json_dumps/Bedeutung.json", "r", encoding="utf-8") as f:
         bedeutung = json.load(f)
-    context = create_glossar_struct_from_data(bedeutung)
+    context: LLMCorpus = create_glossar_struct_from_data(bedeutung)
 
     title: str = input["title"]
     documents: list = input["documents"]
     for doc in documents:
-        toon_corpus = {
-            "id": "",
-            "name": "Beleg",
-            "lemma": "",
-            "pos": "",
-            "bedeutung": "",
-            "lautung": "",
-            "belegsatz": "",
-            "regionen": "",
-            "tags": "",
-        }
-        toon_corpus["id"] = doc["id"]
-        toon_corpus["tags"] = "; ".join(doc["tags"])
+        toon_corpus = Artikel(
+            id=doc["id"],
+            name="Beleg",
+            fragebogennummer=None,
+            hauptlemma=None,
+            nebenlemma=None,
+            pos=None,
+            bedeutung_des_belegsatzes=None,
+            bedeutung_der_lautung=None,
+            belegsatz=None,
+            belegsatz2=None,
+            lautung=None,
+            lautung2=None,
+            sigle=None,
+            sigle2=None,
+            regionen=None,
+            diverses=None,
+            anmerkung=None).model_dump()
+
+        # toon_corpus["tags"] = "; ".join(doc["tags"])
         for key, value in doc["source"].items():
             if isinstance(value, str) and value.strip() != "":
-                if key == "HL":
-                    toon_corpus["lemma"] = value.strip()
-                if key == "POS":
-                    toon_corpus["pos"] = value.strip()
-                if key == "BD/KT*":
-                    toon_corpus["bedeutung"] = value.strip()
-                if key == "KT1" or key == "KT2":
-                    if toon_corpus["belegsatz"].strip() != "":
-                        toon_corpus["belegsatz"] += f"; {value.strip()}"
-                    else:
-                        toon_corpus["belegsatz"] = value.strip()
+                try:
+                    toon_corpus[map_simpliefied_to_article[key]] = value.strip()
+                except KeyError:
+                    continue
             elif isinstance(value, list):
-                regionen = ["Großregion1", "Großregion2", "Kleinregion1", "Kleinregion2", "Gemeinde1", "Gemeinde2"]
-                sub_list_lautung = []
-                sub_list_bedeutung = []
-                sub_list_regionen = []
-                sub_list_belegesatz = []
-                sub_list_hl = []
-                for item in value:
-                    if isinstance(item, str) and item.strip() != "":
-                        if key in regionen:
-                            sub_list_regionen.append(item.strip())
-                        if key == "BD/KT*":
-                            sub_list_bedeutung.append(item.strip())
-                        if key == "BD/LT*":
-                            sub_list_lautung.append(item.strip())
-                        if key == "KT1" or key == "KT2":
-                            sub_list_belegesatz.append(item.strip())
-                        if key == "HL":
-                            toon_corpus["lemma"] = item.strip()
-                    elif isinstance(item, dict):
-                        if key == "BD/KT*":
-                            for k, v in item.items():
-                                if isinstance(v, str) and v.strip() != "":
-                                    sub_list_bedeutung.append(f"{'Dialekt: ' if k == 'orig' else 'Hochdeutsch: '}{v.strip()}")
-                        if key == "BD/LT*":
-                            for k, v in item.items():
-                                if isinstance(v, str) and v.strip() != "":
-                                    sub_list_lautung.append(f"{'Dialekt: ' if k == 'orig' else 'Hochdeutsch: '}{v.strip()}")
-                if len(sub_list_bedeutung) > 0:
-                    toon_corpus["bedeutung"] = "; ".join(sub_list_bedeutung)
-                if len(sub_list_lautung) > 0:
-                    toon_corpus["lautung"] = "; ".join(sub_list_lautung)
-                if len(sub_list_regionen) > 0:
-                    toon_corpus["regionen"] = "; ".join(sub_list_regionen)
-                if len(sub_list_belegesatz) > 0:
-                    toon_corpus["belegsatz"] = "; ".join(sub_list_belegesatz)
+                try:
+                    toon_corpus[map_simpliefied_to_article[key]] = get_list_value_strings(value).strip()
+                except KeyError:
+                    continue
             else:
                 continue
         context["documents"].append(toon_corpus.copy())
     return title, context
+
+
+def get_list_value_strings(input: list) -> list:
+    """_summary_
+
+    Args:
+        input (list): _description_
+
+    Returns:
+        list: _description_
+    """
+    value_list = list()
+    for item in input:
+        if isinstance(item, str) and item.strip() != "":
+            value_list.append(item.strip())
+        elif isinstance(item, dict):
+            for k, v in item.items():
+                if isinstance(v, str) and v.strip() != "":
+                    value_list.append(f"{k}: {v.strip()}")
+        else:
+            continue
+    return ";".join(value_list)
 
 
 def create_corpus_from_documents(input: dict) -> list:
