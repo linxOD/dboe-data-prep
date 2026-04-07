@@ -4,7 +4,7 @@ from cleantext import clean
 from lxml import etree as ET
 from utils import DBOEUtils
 from config import _ARTICLES_PATH, _NSMAP, _OUTPUT_PATH
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class Artikel(BaseModel):
@@ -13,28 +13,24 @@ class Artikel(BaseModel):
     Args:
         BaseModel (_type_): _description_
         """
-    id: str | None
-    name: str | None
-    fragebogennummer: str | None
-    hauptlemma: str | None
-    nebenlemma: str | None
-    pos: str | None
-    bedeutung_des_belegsatzes: str | None
-    bedeutung_der_lautung: str | None
-    belegsatz: str | None
-    belegsatz2: str | None
-    lautung: str | None
-    lautung2: str | None
-    sigle: str | None
-    sigle2: str | None
-    regionen: str | None
-    diverses: str | None
-    anmerkung: str | None
+    id: str
+    fragebogennummer: str
+    hauptlemma: str
+    pos: str
+    bedeutung_des_belegsatzes: str
+    bedeutung_der_lautung: str
+    belegsatz: str
+    belegsatz2: str
+    lautung: str
+    lautung2: str
+    regionen: str
+    diverses: str
+    anmerkung: str
 
 
 class LLMCorpus(BaseModel):
-    context: dict
-    documents: list[Artikel] | None
+    glossar: dict
+    belege: list[dict] | None
 
 
 utils = DBOEUtils()
@@ -150,15 +146,15 @@ def normalize_gloassar_name(name: str) -> str:
 
 
 def create_glossar_struct_from_data(input: dict) -> dict:
-    context = {
-        "context": dict(),
-        "documents": list()
-    }
+    context = LLMCorpus(
+        glossar=dict(),
+        belege=list()
+    ).model_dump()
     for _, value in input.items():
         name = normalize_gloassar_name(value["Name"].strip())
         beschreibung = value["Beschreibung"].strip()
         if name is not None and beschreibung is not None:
-            context["context"][name] = beschreibung
+            context["glossar"][name] = beschreibung
     return context
 
 
@@ -176,7 +172,6 @@ def create_toon_corpus_from_documents(input: dict) -> tuple[str, LLMCorpus]:
     map_simpliefied_to_article = {
         "NR": "fragebogennummer",
         "HL": "hauptlemma",
-        "NL": "nebenlemma",
         "POS": "pos",
         "BD/KT*": "bedeutung_des_belegsatzes",
         "BD/LT*": "bedeutung_der_lautung",
@@ -184,8 +179,6 @@ def create_toon_corpus_from_documents(input: dict) -> tuple[str, LLMCorpus]:
         "KT2": "belegsatz2",
         "LT1_theutonista": "lautung",
         "LT2_theutonista": "lautung2",
-        "Sigle1": "sigle",
-        "Sigle2": "sigle2",
         "Großregion1": "regionen",
         "Großregion2": "regionen",
         "Kleinregion1": "regionen",
@@ -205,22 +198,19 @@ def create_toon_corpus_from_documents(input: dict) -> tuple[str, LLMCorpus]:
     for doc in documents:
         toon_corpus = Artikel(
             id=doc["id"],
-            name="Beleg",
-            fragebogennummer=None,
-            hauptlemma=None,
-            nebenlemma=None,
-            pos=None,
-            bedeutung_des_belegsatzes=None,
-            bedeutung_der_lautung=None,
-            belegsatz=None,
-            belegsatz2=None,
-            lautung=None,
-            lautung2=None,
-            sigle=None,
-            sigle2=None,
-            regionen=None,
-            diverses=None,
-            anmerkung=None).model_dump()
+            fragebogennummer="",
+            hauptlemma="",
+            pos="",
+            bedeutung_des_belegsatzes="",
+            bedeutung_der_lautung="",
+            belegsatz="",
+            belegsatz2="",
+            lautung="",
+            lautung2="",
+            regionen="",
+            diverses="",
+            anmerkung=""
+        ).model_dump()
 
         # toon_corpus["tags"] = "; ".join(doc["tags"])
         for key, value in doc["source"].items():
@@ -236,7 +226,7 @@ def create_toon_corpus_from_documents(input: dict) -> tuple[str, LLMCorpus]:
                     continue
             else:
                 continue
-        context["documents"].append(toon_corpus.copy())
+        context["belege"].append(toon_corpus.copy())
     return title, context
 
 
