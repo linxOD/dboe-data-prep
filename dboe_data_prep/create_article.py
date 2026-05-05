@@ -18,7 +18,7 @@ if __name__ == "__main__":
         print(f"Processing article: {article_id}")
         article = load_article(article_id, struct=True)
         with open(os.path.join(OUTPUT_PATH, f"{article_id}.json"), "w", encoding='utf-8') as f:
-            json.dump(article, f, indent=2)
+            json.dump(article, f, indent=2, ensure_ascii=False)
         # article = {
         #     "article": article
         # }

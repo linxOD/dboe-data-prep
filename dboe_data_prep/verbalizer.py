@@ -403,11 +403,11 @@ def load_article(article_name: str, struct: bool = False) -> list:
     else:
         article_definitions = create_article_definitions(sense, list())
     return {
-        "lemma": form,
-        "pos": pos,
-        "genus": gender,
-        "form": variants,
-        "bedeutungen": article_definitions
+        "Lemma": form,
+        "POS": pos,
+        "Genus": gender,
+        "Form": variants,
+        "Bedeutungen": article_definitions
     }
 
 
@@ -503,8 +503,8 @@ def create_article_definitions_struct(elements: list, meanings: list,
                     elem = " ".join(elem).strip()
                     place = " ".join(place).strip()
                     example_list.append({
-                        "beispielsatz": elem,
-                        "herkunftsort": place
+                        "Belegsatz": elem,
+                        "Herkunftsort": place
                     })
             except IndexError:
                 example_list = None
@@ -518,20 +518,29 @@ def create_article_definitions_struct(elements: list, meanings: list,
                 u_type = u.get("type")
                 u_ref = u.get("ref").split("#")[1]
                 u_text = u.text
-                usage_list.append({
-                    "typ": u_type,
-                    "sigle": u_ref,
-                    "name": u_text
-                })
+                # usage_list.append({
+                #     "typ": u_type,
+                #     "sigle": u_ref,
+                #     "name": u_text
+                # })
+                usage_list.append(f"{u_ref} {u_text}")
             #########################################
             # create dict for each definition found #
             #########################################
+            typ = nummerierung.split(".")
+            if len(typ) == 2:
+                typ = "Hauptbedeutung"
+            elif len(typ) == 3:
+                typ = "Unterbedeutung"
+            elif len(typ) == 4:
+                typ = "Variante"
             meanings.append({
-                "bedeutungskategorie": s_cat,
-                "bedeutungsebene": nummerierung,
-                "bedeutung": definition.strip(),
-                "regionen": usage_list,
-                "beispiele": example_list,
+                "Bedeutungsphrase": definition.strip(),
+                "Typ": typ,
+                "Gruppierung": s_cat,
+                # "Bedeutungsebene": nummerierung,
+                "Regionen": usage_list,
+                "Belegsaetze": example_list,
             })
         else:
             meanings = create_article_definitions_struct(sub_elements, meanings, sub + 1)
