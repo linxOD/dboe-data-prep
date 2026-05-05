@@ -206,21 +206,21 @@ def create_toon_corpus_from_documents(input: dict) -> tuple[str, LLMCorpus]:
         toon_corpus = Artikel(
             id=doc["id"],
             name="Beleg",
-            fragebogennummer=None,
-            hauptlemma=None,
-            nebenlemma=None,
-            pos=None,
-            bedeutung_des_belegsatzes=None,
-            bedeutung_der_lautung=None,
-            belegsatz=None,
-            belegsatz2=None,
-            lautung=None,
-            lautung2=None,
-            sigle=None,
-            sigle2=None,
-            regionen=None,
-            diverses=None,
-            anmerkung=None).model_dump()
+            fragebogennummer="",
+            hauptlemma="",
+            nebenlemma="",
+            pos="",
+            bedeutung_des_belegsatzes="",
+            bedeutung_der_lautung="",
+            belegsatz="",
+            belegsatz2="",
+            lautung="",
+            lautung2="",
+            sigle="",
+            sigle2="",
+            regionen="",
+            diverses="",
+            anmerkung="").model_dump()
 
         # toon_corpus["tags"] = "; ".join(doc["tags"])
         for key, value in doc["source"].items():

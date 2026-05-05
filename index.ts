@@ -12,7 +12,7 @@ for (const file of files) {
     const output = join(corpusDir, file.name.replace(/\.json$/i, ".toon"))
 
     const data = JSON.parse(await readFile(input, "utf-8"))
-    const encoded = encode(data)
+    const encoded = encode(data).replace("null", "")
     await writeFile(output, encoded)
   }
 }
