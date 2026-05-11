@@ -13,24 +13,25 @@ class Artikel(BaseModel):
     Args:
         BaseModel (_type_): _description_
         """
-    id: str
-    fragebogennummer: str
-    hauptlemma: str
-    pos: str
-    bedeutung_des_belegsatzes: str
-    bedeutung_der_lautung: str
-    belegsatz: str
-    belegsatz2: str
-    lautung: str
-    lautung2: str
-    regionen: str
-    diverses: str
-    anmerkung: str
+    ID: str
+    Fragebogennummer: str
+    Lemma: str
+    POS: str
+    Bedeutung_des_Belegsatzes: str
+    Bedeutung_der_Lautung: str
+    Belegsatz1: str
+    Belegsatz2: str
+    Lautung1: str
+    Lautung2: str
+    Großregion: str
+    Herkunftsort: str
+    Diverses: str
+    Anmerkung: str
 
 
 class LLMCorpus(BaseModel):
-    glossar: dict
-    belege: list[dict] | None
+    Glossar: dict
+    Belege: list[dict] | None
 
 
 utils = DBOEUtils()
@@ -147,14 +148,14 @@ def normalize_gloassar_name(name: str) -> str:
 
 def create_glossar_struct_from_data(input: dict) -> dict:
     context = LLMCorpus(
-        glossar=dict(),
-        belege=list()
+        Glossar=dict(),
+        Belege=list()
     ).model_dump()
     for _, value in input.items():
         name = normalize_gloassar_name(value["Name"].strip())
         beschreibung = value["Beschreibung"].strip()
         if name is not None and beschreibung is not None:
-            context["glossar"][name] = beschreibung
+            context["Glossar"][name] = beschreibung
     return context
 
 
@@ -170,23 +171,21 @@ def create_toon_corpus_from_documents(input: dict) -> tuple[str, LLMCorpus]:
     
     # mapping of simplified keys to article keys
     map_simpliefied_to_article = {
-        "NR": "fragebogennummer",
-        "HL": "hauptlemma",
-        "POS": "pos",
-        "BD/KT*": "bedeutung_des_belegsatzes",
-        "BD/LT*": "bedeutung_der_lautung",
-        "KT1": "belegsatz",
-        "KT2": "belegsatz2",
-        "LT1_theutonista": "lautung",
-        "LT2_theutonista": "lautung2",
-        "Großregion1": "regionen",
-        "Großregion2": "regionen",
-        "Kleinregion1": "regionen",
-        "Kleinregion2": "regionen",
-        "Gemeinde1": "regionen",
-        "Gemeinde2": "regionen",
-        "DIV": "diverses",
-        "ANM": "anmerkung"
+        "NR": "Fragebogennummer",
+        "HL": "Lemma",
+        "POS": "POS",
+        "BD/KT*": "Bedeutung_des_Belegsatzes",
+        "BD/LT*": "Bedeutung_der_Lautung",
+        "KT1": "Belegsatz1",
+        "KT2": "Belegsatz2",
+        "LT1_theutonista": "Lautung1",
+        "LT2_theutonista": "Lautung2",
+        "Großregion1": "Großregion",
+        "Großregion2": "Großregion",
+        "Gemeinde1": "Herkunftsort",
+        "Gemeinde2": "Herkunftsort",
+        "DIV": "Diverses",
+        "ANM": "Anmerkung"
     }
     
     with open("json_dumps/Bedeutung.json", "r", encoding="utf-8") as f:
@@ -195,38 +194,41 @@ def create_toon_corpus_from_documents(input: dict) -> tuple[str, LLMCorpus]:
 
     title: str = input["title"]
     documents: list = input["documents"]
+    form: dict = input["form"]
+    context["Glossar"]["Fragebogennummer"] = f"Auflistung von relevanten Fragebogennummern und Beschreibungen:\n{''.join([f'* **{k}:** {" ".join(v)}\n' for k, v in form.items()])}"
     for doc in documents:
         toon_corpus = Artikel(
-            id=doc["id"],
-            fragebogennummer="",
-            hauptlemma="",
-            pos="",
-            bedeutung_des_belegsatzes="",
-            bedeutung_der_lautung="",
-            belegsatz="",
-            belegsatz2="",
-            lautung="",
-            lautung2="",
-            regionen="",
-            diverses="",
-            anmerkung=""
+            ID=doc["id"],
+            Fragebogennummer="",
+            Lemma="",
+            POS="",
+            Bedeutung_des_Belegsatzes="",
+            Bedeutung_der_Lautung="",
+            Belegsatz1="",
+            Belegsatz2="",
+            Lautung1="",
+            Lautung2="",
+            Großregion="",
+            Herkunftsort="",
+            Diverses="",
+            Anmerkung=""
         ).model_dump()
 
         # toon_corpus["tags"] = "; ".join(doc["tags"])
         for key, value in doc["source"].items():
             if isinstance(value, str) and value.strip() != "":
                 try:
-                    toon_corpus[map_simpliefied_to_article[key]] = value.strip()
+                    toon_corpus[map_simpliefied_to_article[key]] += value.strip() + ";"
                 except KeyError:
                     continue
             elif isinstance(value, list):
                 try:
-                    toon_corpus[map_simpliefied_to_article[key]] = get_list_value_strings(value).strip()
+                    toon_corpus[map_simpliefied_to_article[key]] += get_list_value_strings(value).strip() + ";"
                 except KeyError:
                     continue
             else:
                 continue
-        context["belege"].append(toon_corpus.copy())
+        context["Belege"].append(toon_corpus.copy())
     return title, context
 
 

@@ -12,7 +12,7 @@ os.makedirs(OUTPUT_PATH, exist_ok=True)
 
 if __name__ == "__main__":
     utils = DBOEUtils()
-    articles = utils.parse_csv(os.path.join(".", "meta", "articles_utf8.csv"))
+    articles = utils.parse_csv(os.path.join(".", "meta", "articles_utf8_updated.csv"))
     for article in tqdm(articles, total=len(articles)):
         article_id = article['article']
         print(f"Processing article: {article_id}")

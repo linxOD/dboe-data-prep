@@ -79,7 +79,7 @@ if __name__ == "__main__":
     dd = DBOEData()
     url = dd.load_env_var(_API_VAR_MD)
     # col_title = load_env_var(_TITLE_VAR)
-    articles = dd.parse_csv(os.path.join(".", "meta", "articles_utf8.csv"))
+    articles = dd.parse_csv(os.path.join(".", "meta", "articles_utf8_updated.csv"))
     try:
         tag_date, tag_glob = dd.get_date_from_dir(INPUT_PATH, "tags", "tags")
         is_outdated = dd.is_file_outdated(tag_date, _EXPIRY_TIME)
