@@ -122,7 +122,7 @@ class DBOEUtils:
                 output_dir = os.path.join(output_path,
                                           title + "__" + _CURRENT_TIME)
                 os.makedirs(output_dir, exist_ok=True)
-            with open(os.path.join(output_dir, file), 'w') as f:
+            with open(os.path.join(output_dir, file), 'w', encoding="utf-8") as f:
                 json.dump(data, f, ensure_ascii=False)
         return json.dumps(data, ensure_ascii=False)
 
@@ -158,7 +158,7 @@ class DBOEUtils:
             dict: _description_
         """
         input_dir = os.path.join(file)
-        with open(input_dir, 'r') as f:
+        with open(input_dir, 'r', encoding="utf-8") as f:
             data = json.load(f)
         return data
 

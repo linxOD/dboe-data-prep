@@ -9,3 +9,4 @@ __pycache__/*
 /.pnpm-store
 /json_dumps
 /dist
+/.venv
